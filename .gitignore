@@ -53,3 +53,7 @@ dkms.conf
 
 #output dir
 bin/
+
+#stuff
+*.tmp
+tmp/
