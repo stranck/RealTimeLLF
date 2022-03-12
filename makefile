@@ -3,6 +3,7 @@ ARGS := -O2 -lm -g
 SRC := src/
 OPEN_MP := $(SRC)OpenMP/
 CUDA := $(SRC)cuda/
+LLF := $(SRC)llf/
 UTILS := $(SRC)utils/
 
 complete : clean all
@@ -23,4 +24,8 @@ openmp :
 cuda :
 	$(MAKE) -C $(CUDA)
 
-all : bin openmp cuda
+.PHONY : llf
+llf :
+	$(MAKE) -C $(LLF)
+
+all : bin openmp cuda llf
