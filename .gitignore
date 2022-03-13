@@ -57,3 +57,5 @@ bin/
 #stuff
 *.tmp
 tmp/
+.vscode/
+src/utils/test/testimage.h

@@ -5,6 +5,7 @@ OPEN_MP := $(SRC)OpenMP/
 CUDA := $(SRC)cuda/
 LLF := $(SRC)llf/
 UTILS := $(SRC)utils/
+SCRIPTS := scripts/
 
 complete : clean all
 
@@ -25,7 +26,11 @@ cuda :
 	$(MAKE) -C $(CUDA)
 
 .PHONY : llf
-llf :
+llf : testimage
 	$(MAKE) -C $(LLF)
+
+.PHONY : testimage
+testimage :
+	python3 $(SCRIPTS)staticImageConvert.py imgTest/razzi.jpg $(UTILS)test/testimage.h
 
 all : bin openmp cuda llf
