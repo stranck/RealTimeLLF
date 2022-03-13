@@ -76,3 +76,131 @@ typedef struct {
 	float z;
 	float w;
 } Vec4f;
+
+#define vec4Add(v1, v2, t)({\
+	t ret;\
+	ret.x = v1.x + v2.x;\
+	ret.y = v1.y + v2.y;\
+	ret.z = v1.z + v2.z;\
+	ret.w = v1.w + v2.w;\
+	ret; \
+})
+#define vec4Sub(v1, v2, t)({\
+	t ret;\
+	ret.x = v1.x - v2.x;\
+	ret.y = v1.y - v2.y;\
+	ret.z = v1.z - v2.z;\
+	ret.w = v1.w - v2.w;\
+	ret; \
+})
+#define vec4Mul(v1, v2, t)({\
+	t ret;\
+	ret.x = v1.x * v2.x;\
+	ret.y = v1.y * v2.y;\
+	ret.z = v1.z * v2.z;\
+	ret.w = v1.w * v2.w;\
+	ret; \
+})
+#define vec4Div(v1, v2, t)({\
+	t ret;\
+	ret.x = v1.x / v2.x;\
+	ret.y = v1.y / v2.y;\
+	ret.z = v1.z / v2.z;\
+	ret.w = v1.w / v2.w;\
+	ret; \
+})
+
+
+#define vec4AddC(v1, c, t)({\
+	t ret;\
+	ret.x = v1.x + c;\
+	ret.y = v1.y + c;\
+	ret.z = v1.z + c;\
+	ret.w = v1.w + c;\
+	ret; \
+})
+#define vec4SubC(v1, c, t)({\
+	t ret;\
+	ret.x = v1.x - c;\
+	ret.y = v1.y - c;\
+	ret.z = v1.z - c;\
+	ret.w = v1.w - c;\
+	ret; \
+})
+#define vec4MulC(v1, c, t)({\
+	t ret;\
+	ret.x = v1.x * c;\
+	ret.y = v1.y * c;\
+	ret.z = v1.z * c;\
+	ret.w = v1.w * c;\
+	ret; \
+})
+#define vec4DivC(v1, c, t)({\
+	t ret;\
+	ret.x = v1.x / c;\
+	ret.y = v1.y / c;\
+	ret.z = v1.z / c;\
+	ret.w = v1.w / c;\
+	ret; \
+})
+
+
+
+#define vec3Add(v1, v2, t)({\
+	t ret;\
+	ret.x = v1.x + v2.x;\
+	ret.y = v1.y + v2.y;\
+	ret.z = v1.z + v2.z;\
+	ret; \
+})
+#define vec3Sub(v1, v2, t)({\
+	t ret;\
+	ret.x = v1.x - v2.x;\
+	ret.y = v1.y - v2.y;\
+	ret.z = v1.z - v2.z;\
+	ret; \
+})
+#define vec3Mul(v1, v2, t)({\
+	t ret;\
+	ret.x = v1.x * v2.x;\
+	ret.y = v1.y * v2.y;\
+	ret.z = v1.z * v2.z;\
+	ret; \
+})
+#define vec3Div(v1, v2, t)({\
+	t ret;\
+	ret.x = v1.x / v2.x;\
+	ret.y = v1.y / v2.y;\
+	ret.z = v1.z / v2.z;\
+	ret; \
+})
+
+
+#define vec3AddC(v1, c, t)({\
+	t ret;\
+	ret.x = v1.x + c;\
+	ret.y = v1.y + c;\
+	ret.z = v1.z + c;\
+	ret; \
+})
+#define vec3SubC(v1, c, t)({\
+	t ret;\
+	ret.x = v1.x - c;\
+	ret.y = v1.y - c;\
+	ret.z = v1.z - c;\
+	ret; \
+})
+#define vec3MulC(v1, c, t)({\
+	t ret;\
+	ret.x = v1.x * c;\
+	ret.y = v1.y * c;\
+	ret.z = v1.z * c;\
+	ret; \
+})
+#define vec3DivC(v1, c, t)({\
+	t ret;\
+	ret.x = v1.x / c;\
+	ret.y = v1.y / c;\
+	ret.z = v1.z / c;\
+	ret; \
+})
