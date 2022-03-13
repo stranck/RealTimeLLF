@@ -1,10 +1,7 @@
-#include <stdint.h>
-#ifndef VECTS_DEP
-    #include "vects.h"
-#endif
+#pragma once
 
-#ifndef STRUCTS_DEP
-#define STRUCTS_DEP
+#include <stdint.h>
+#include "vects.h"
 
 /*typedef struct {
 	uint8_t r;
@@ -19,5 +16,3 @@ typedef struct {
 	uint32_t width;
 	Pixel *pixels;
 } Image;
-
-#endif

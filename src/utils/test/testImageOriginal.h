@@ -1,20 +1,15 @@
-#ifndef STRUCTS_DEP
-	#include "structs.h"
-#endif
-#ifndef IMAGE_UTILS_DEP
-	#include "imageutils.h"
-#endif
-#ifndef UTILS_DEP
-	#include "utils.h"
-#endif
+#pragma once
 
-#ifndef TEST_IMAGE_DEP
-#define TEST_IMAGE_DEP
+#include "../structs.h"
+#include "../imageutils.h"
+#include "../utils.h"
+
+#include <stdint.h>
 
 Image getStaticImage(){
 	const uint32_t width = 10, height = 10;
 	const uint32_t dim = width * height;
-	uint32_t data[dim] = {
+	uint32_t data[] = {
 		0x10000000
 	};
 	Pixel pxs[dim];
@@ -24,9 +19,10 @@ Image getStaticImage(){
 		uint8_t g = (data[i] >> 16) & 0xff;
 		uint8_t b = (data[i] >> 8) & 0xff;
 		uint8_t a = data[i] & 0xff;
-		pxs[i] = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f};
+		Pixel p = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f};
+		pxs[i] = p;
 	}
-	Image img = makeImage(width, height, pxs);
+	Image img = makeImageWithData(width, height, pxs);
 	return img;
 }
 
@@ -37,5 +33,3 @@ void printStaticImage(Image img){
 	for(uint32_t i = 0; i < height; i++)
 		printBuffer((uint8_t *) &pxs[width * i], width * sizeof(Pixel));
 }
-
-#endif

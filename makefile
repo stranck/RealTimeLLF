@@ -18,15 +18,15 @@ bin :
 	mkdir -p bin
 
 .PHONY : openmp
-openmp :
+openmp : bin
 	$(MAKE) -C $(OPEN_MP)
 
 .PHONY : cuda
-cuda :
+cuda : bin
 	$(MAKE) -C $(CUDA)
 
 .PHONY : llf
-llf : testimage
+llf : testimage bin
 	$(MAKE) -C $(LLF)
 
 .PHONY : testimage
