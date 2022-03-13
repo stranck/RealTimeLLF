@@ -9,4 +9,5 @@
 int main(){
 	Image img = getStaticImage();
 	printStaticImage(img);
+	destroyImage(img);
 }
