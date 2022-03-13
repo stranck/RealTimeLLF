@@ -16,9 +16,9 @@ void printBuffer(uint8_t *data, uint32_t len){
 }
 
 int32_t roundfI32(float f){
-	return (int32_t) rintf(f);
+	return (int32_t) roundf(f);
 }
 uint8_t roundfu8(float f){
-	return (uint8_t) rintf(f);
+	return (uint8_t) roundf(f);
 }
 
