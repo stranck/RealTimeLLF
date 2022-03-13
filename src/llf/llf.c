@@ -1,19 +1,21 @@
-#include "../utils/structs.h"
 #include "../utils/imageutils.h"
+#include "../utils/llfUtils.h"
+#include "../utils/structs.h"
 #include "../utils/vects.h"
 #include "../utils/utils.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <math.h>
 
 #include "../utils/test/testimage.h"
 
 
-Image downsample(Image img, int *width, int *height, double filter[] ){
-	Image I = convolve(img,filter);
+/*Image4 downsample(Image4 img, int *width, int *height, double filter[]){
+	Image4 I = convolve(img,filter);
 	int originalW = *width, originalH = *height;
 	*width /= 2;
 	*height /= 2;
-	Image ret = make_image(*width, *height, false);
+	Image4 ret = make_image(*width, *height, false);
 	int y;
 	int startingX = originalW & 1;
 	int startingY = originalH & 1;
@@ -27,11 +29,11 @@ Image downsample(Image img, int *width, int *height, double filter[] ){
 	return ret;
 }
 
-Image upsample(Image I, double filter[]){
+Image4 upsample(Image4 I, double filter[]){
 	int smallWidth = I.width, smallHeight = I.height;
 	int uppedW = smallWidth << 1;
 	int uppedH = smallHeight << 1;
-	Image upsampled = make_image(uppedW, uppedH, false);
+	Image4 upsampled = make_image(uppedW, uppedH, false);
 	for(int y = 0; y < smallHeight; y++){
 		int yUp = y * 2;
 		int yUpLess = yUp++;
@@ -48,48 +50,21 @@ Image upsample(Image I, double filter[]){
 	}
 	
 	return convolve(upsampled, filter);
-}
-
-Image remap(Image I, Vec4f g0, double sigma, double alpha, double beta){
-	int size = I.width * I.height;
-	auto pixels = I.pixels;
-	for(int i = 0; i < size; i++){
-		Vec4f delta = pixels[i] - g0;
-		double mag = sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
-		if(mag > 1e-10) {
-			delta.x /= mag;
-			delta.y /= mag;
-			delta.z /= mag;
-			delta.w /= mag;
-		}	//Ci sono altri modi per dividere ogni elemento contemporaneamente ?
-
-		if(mag < sigma){ //Details
-			double fraction = mag / sigma;
-			double polynomial = pow(fraction, alpha);
-			if(alpha < 1){
-				double kNoiseLevel = 0.01;
-				double blend = smoothstep(kNoiseLevel, 2 * kNoiseLevel, fraction * sigma);
-				polynomial = blend * polynomial + (1 - blend) * fraction;
-			}
-			I.pixels[i] = g0 + delta * sigma * polynomial;	//Creare una funzione apposita ma non posso ora
-		} else { //Edges
-			I.pixels[i] = g0 + delta * (((mag - sigma) * beta) + sigma);
-		}
-	}
-	return I;
-}
-
-Image make_image(int width, int height, bool linear) {
-  //return Image{ width, height, linear, Pixel(width * height, vec4f{0, 0, 0, 0})};
-	return;
-}
-
-Image convolve(Image image, double kernel[]) {
-	return;
-}
+}*/
 
 int main(){
-	Image img = getStaticImage();
-	printStaticImage(img);
-	destroyImage(img);
+	Image4 img4 = getStaticImage4();
+	Image3 img = image4to3(img4);
+	AlphaMap map = getAlphaMap(img4);
+	destroyImage4(img4);
+	Pixel3 test = *getPixel3(img, img.height / 2, img.width / 2);
+	remap(&img, test, 0.35, 0.4, 5);
+	img4 = image3to4AlphaMap(img, map);
+	//Pixel4 a = {1, 2, 3, 4};
+	//Pixel4 b = {10, 20, 30, 40};
+	//int x = 2;
+	//Pixel4 delta = /*vec4Add(vec4DivC(*/vec4MulC(vec4MulC(a, x, Pixel4), 2, Pixel4)/*, 2, Pixel4), b, Pixel4)*/;
+	//printf("AAAAAAAA %f %f %f %f\n", delta.x, delta.y, delta.z, delta.w);
+	printStaticImage4(img4);
+	destroyImage4(img4);
 }
