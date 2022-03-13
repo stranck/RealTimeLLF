@@ -1,5 +1,4 @@
 #include "imageutils.h"
-#include "structs.h"
 
 Image makeImage(uint32_t width, uint32_t height){
 	Pixel *img = malloc(width * height * sizeof(Pixel)/* * sizeof(uint8_t)*/);

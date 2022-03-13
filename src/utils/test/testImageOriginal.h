@@ -1,9 +1,17 @@
-#include "structs.h"
-#include "imageutils.h"
-#include "vects.h"
-#include "utils.h"
+#ifndef STRUCTS_DEP
+	#include "structs.h"
+#endif
+#ifndef IMAGE_UTILS_DEP
+	#include "imageutils.h"
+#endif
+#ifndef UTILS_DEP
+	#include "utils.h"
+#endif
 
-Image getImage(){
+#ifndef TEST_IMAGE_DEP
+#define TEST_IMAGE_DEP
+
+Image getStaticImage(){
 	const uint32_t width = 10, height = 10;
 	const uint32_t dim = width * height;
 	uint32_t data[dim] = {
@@ -22,10 +30,12 @@ Image getImage(){
 	return img;
 }
 
-void printImage(Image img){
+void printStaticImage(Image img){
 	Pixel *pxs = img.pixels;
 	const uint32_t width = img.width;
 	const uint32_t height = img.height;
 	for(uint32_t i = 0; i < height; i++)
 		printBuffer((uint8_t *) &pxs[width * i], width * sizeof(Pixel));
 }
+
+#endif

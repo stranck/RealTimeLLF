@@ -1,5 +1,8 @@
 #include <stdint.h>
 
+#ifndef VECTS_DEP
+#define VECTS_DEP
+
 typedef struct {
 	int32_t x;
 	int32_t y;
@@ -103,3 +106,5 @@ const Vec4f zero4f = {0, 0, 0, 0};
 const Vec2f one2f = {1, 1};
 const Vec3f one3f = {1, 1, 1};
 const Vec4f one4f = {1, 1, 1, 1};
+
+#endif

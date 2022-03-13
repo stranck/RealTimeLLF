@@ -1,4 +1,12 @@
+#include "../utils/structs.h"
+#include "../utils/imageutils.h"
+#include "../utils/vects.h"
+#include "../utils/utils.h"
+#include <stdint.h>
+
+#include "../utils/test/testimage.h"
+
 int main(){
-    void (*a)(void) = 0;
-    a(); //xd
+	Image img = getStaticImage();
+	printStaticImage(img);
 }
