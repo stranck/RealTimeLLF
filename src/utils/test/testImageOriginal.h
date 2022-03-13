@@ -1,10 +1,13 @@
 #pragma once
 
 #include "../structs.h"
+#include "../vects.h"
 #include "../imageutils.h"
 #include "../utils.h"
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 Image getStaticImage(){
 	const uint32_t width = 10, height = 10;
@@ -30,6 +33,17 @@ void printStaticImage(Image img){
 	Pixel *pxs = img.pixels;
 	const uint32_t width = img.width;
 	const uint32_t height = img.height;
-	for(uint32_t i = 0; i < height; i++)
-		printBuffer((uint8_t *) &pxs[width * i], width * sizeof(Pixel));
+	printf("%d %d\n", width, height);
+	Vec4u8 *buffer = (Vec4u8 *) calloc(width, sizeof(Vec4u8));
+	for(uint32_t i = 0; i < height; i++){
+		Pixel *currentLine = &pxs[width * i];
+		for(uint32_t j = 0; j < width; j++){
+			buffer[j].x = roundfu8(255.0f * currentLine[j].x);
+			buffer[j].y = roundfu8(255.0f * currentLine[j].y);
+			buffer[j].z = roundfu8(255.0f * currentLine[j].z);
+			buffer[j].w = roundfu8(255.0f * currentLine[j].w);
+		}
+		printBuffer((uint8_t *) buffer, width * sizeof(Vec4u8));
+		puts("");
+	}
 }
