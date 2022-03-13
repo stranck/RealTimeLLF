@@ -21,3 +21,4 @@ int32_t roundfI32(float f){
 uint8_t roundfu8(float f){
 	return (uint8_t) rintf(f);
 }
+
