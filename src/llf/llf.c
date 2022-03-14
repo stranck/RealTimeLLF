@@ -60,11 +60,6 @@ int main(){
 	Pixel3 test = *getPixel3(img, img.height / 2, img.width / 2);
 	remap(&img, test, 0.35, 0.4, 5);
 	img4 = image3to4AlphaMap(img, map);
-	//Pixel4 a = {1, 2, 3, 4};
-	//Pixel4 b = {10, 20, 30, 40};
-	//int x = 2;
-	//Pixel4 delta = /*vec4Add(vec4DivC(*/vec4MulC(vec4MulC(a, x, Pixel4), 2, Pixel4)/*, 2, Pixel4), b, Pixel4)*/;
-	//printf("AAAAAAAA %f %f %f %f\n", delta.x, delta.y, delta.z, delta.w);
 	printStaticImage4(img4);
 	destroyImage4(img4);
 }
