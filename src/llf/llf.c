@@ -53,13 +53,13 @@ Image4 upsample(Image4 I, double filter[]){
 }*/
 
 int main(){
-	Image4 img4 = getStaticImage4();
-	Image3 img = image4to3(img4);
+	Image4 * img4 = getStaticImage4();
+	Image3 * img = image4to3(img4);
 	AlphaMap map = getAlphaMap(img4);
-	destroyImage4(img4);
-	Pixel3 test = *getPixel3(img, img.height / 2, img.width / 2);
-	remap(&img, test, 0.35, 0.4, 5);
+	destroyImage(img4);
+	Pixel3 test = *getPixel3(img, img->height / 2, img->width / 2);
+	remap(img, test, 0.35, 0.4, 5);
 	img4 = image3to4AlphaMap(img, map);
 	printStaticImage4(img4);
-	destroyImage4(img4);
+	destroyImage(img4);
 }
