@@ -21,7 +21,7 @@ void remap(Image3 * img, Pixel3 g0, double sigma, double alpha, double beta){
 			double fraction = mag / sigma;
 			double polynomial = pow(fraction, alpha);
 			if(alpha < 1){
-				double kNoiseLevel = 0.01;
+				const double kNoiseLevel = 0.01;
 				double blend = smoothstep(kNoiseLevel, 2 * kNoiseLevel, fraction * sigma);
 				polynomial = blend * polynomial + (1 - blend) * fraction;
 			}
@@ -34,4 +34,17 @@ void remap(Image3 * img, Pixel3 g0, double sigma, double alpha, double beta){
 			img -> pixels[i] = vec3Add(g0, px, Pixel3);
 		}
 	}
+}
+
+Kernel createFilter(){
+	const int kernelDimension = 5;
+	const double params[kernelDimension] = {0.05, 0.25, 0.4, 0.25, 0.05};
+	Kernel filter = malloc(kernelDimension * kernelDimension * sizeof(double));
+
+	for(uint8_t i = 0; i < 5; i++){
+		for(uint8_t j = 0; j < 5; j++){
+			filter[i][j] = params[i] * params[j];
+		}
+	}
+	return filter;
 }
