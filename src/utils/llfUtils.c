@@ -26,12 +26,12 @@ void remap(Image3 * img, Pixel3 g0, double sigma, double alpha, double beta){
 				polynomial = blend * polynomial + (1 - blend) * fraction;
 			}
 			double d = sigma * polynomial;
-			Pixel3 px = vec3Add(g0, delta, Pixel3);
-			img -> pixels[i] = vec3MulC(px, d, Pixel3);
+			Pixel3 px = vec3MulC(delta, d, Pixel3);
+			img -> pixels[i] = vec3Add(g0, px, Pixel3);
 		} else { //Edges
 			double d = ((mag - sigma) * beta) + sigma;
-			Pixel3 px = vec3Add(g0, delta, Pixel3);
-			img -> pixels[i] = vec3MulC(px, d, Pixel3);
+			Pixel3 px = vec3MulC(delta, d, Pixel3);
+			img -> pixels[i] = vec3Add(g0, px, Pixel3);
 		}
 	}
 }
