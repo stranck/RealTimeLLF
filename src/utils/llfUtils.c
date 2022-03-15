@@ -8,7 +8,7 @@
 #include <math.h>
 
 void remap(Image3 * img, const Pixel3 g0, double sigma, double alpha, double beta){
-	int size = img -> width * img -> height;
+	uint32_t size = img -> width * img -> height;
 	Pixel3 *pixels = img -> pixels;
 	for(int i = 0; i < size; i++){
 		Pixel3 delta = vec3Sub(pixels[i], g0, Pixel3);
@@ -61,16 +61,16 @@ Pyramid createPyramid(uint32_t width, uint32_t height, uint8_t nLevels){ //Pyram
 void convolve(Image3 *dest, Image3 *source, Kernel kernel) {
 	uint8_t  rows = KERNEL_DIMENSION;
 	uint8_t  cols = KERNEL_DIMENSION;
-	uint32_t  xstart = -1 * cols / 2;
-	uint32_t  ystart = -1 * rows / 2;
+	int32_t  xstart = -1 * cols / 2;
+	int32_t  ystart = -1 * rows / 2;
 
 	for (uint32_t j = 0; j < dest->height; j++) {
 		for (uint32_t i = 0; i < dest->width; i++) {
 			Pixel3 c = zero3f;
 			for (uint32_t y = 0; y < rows; y++) {
-                uint32_t jy = j + ystart + y;
+                int32_t jy = j + ystart + y;
 				for (uint32_t x = 0; x < cols; x++) {
-                    uint32_t ix = i + xstart + x;
+                    int32_t ix = i + xstart + x;
                     if (ix >= 0 && ix < dest->width && jy >= 0 && jy < dest->height) {
 						double kern_elem = kernel[x][y];
 						Pixel3 px = *getPixel3(source, ix, jy);
