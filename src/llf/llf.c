@@ -253,8 +253,7 @@ int main(){
 	Image3 *img = image4to3(img4);
 	AlphaMap map = getAlphaMap(img4);
 	destroyImage(img4);
-	Pixel3 test = *getPixel3(img, img->width / 2, img->height / 2);
-	remap(img, test, 0.35, 0.4, 5);
+	llf(img, 0.35, 0.4, 5, 3);
 	img4 = image3to4AlphaMap(img, map);
 	destroyImage(img);
 	printStaticImage4(img4);
