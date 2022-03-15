@@ -5,6 +5,7 @@
 #include "../utils/vects.h"
 #include "../utils/utils.h"
 
+#include <stdlib.h>
 #include <math.h>
 
 void remap(Image3 * img, const Pixel3 g0, double sigma, double alpha, double beta){
