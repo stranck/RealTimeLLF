@@ -10,31 +10,6 @@
 
 #include "../utils/test/testimage.h"
 
-
-/*
-Image4 upsample(Image4 I, double filter[]){
-	int smallWidth = I.width, smallHeight = I.height;
-	int uppedW = smallWidth << 1;
-	int uppedH = smallHeight << 1;
-	Image4 upsampled = make_image(uppedW, uppedH, false);
-	for(int y = 0; y < smallHeight; y++){
-		int yUp = y * 2;
-		int yUpLess = yUp++;
-		for(int x = 0; x < smallWidth; x++){
-			int xUp = x * 2;
-			auto pixel = I[{x, y}];
-			int xUpLess = xUp++;
-
-			upsampled[{xUpLess, yUpLess}] = pixel;
-			upsampled[{xUpLess, yUp}] = pixel;
-			upsampled[{xUp, yUpLess}] = pixel;
-			upsampled[{xUp, yUp}] = pixel;
-		}
-	}
-	
-	return convolve(upsampled, filter);
-}*/
-
 void downsample(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter, Image3 *buffer){
 	convolve(buffer, source, filter);
 	uint32_t originalW = *width, originalH = *height;
@@ -223,10 +198,8 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
 	Kernel filter = createFilter();
 	Pyramid gaussPyramid = createPyramid(width, height, nLevels);
 	Pyramid outputLaplacian = createPyramid(width, height, nLevels);
-
 	Pyramid bufferGaussPyramid = createPyramid(width, height, nLevels);
 	Pyramid bufferLaplacianPyramid = createPyramid(width, height, nLevels);
-	Image3 *bufferImg = makeImage3(width, height);
 
 	gaussianPyramid(gaussPyramid, img, nLevels, filter);
 	for(uint8_t lev = 0; lev < nLevels; lev++){
@@ -267,6 +240,12 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
 		}
 	}
 	collapse(img, outputLaplacian, nLevels, filter);
+	
+	destroyPyramid(&gaussPyramid, nLevels);
+	destroyPyramid(&outputLaplacian, nLevels);
+	destroyPyramid(&bufferGaussPyramid, nLevels);
+	destroyPyramid(&bufferLaplacianPyramid, nLevels);
+	destroyFilter(&filter);
 }
 
 int main(){
@@ -277,6 +256,7 @@ int main(){
 	Pixel3 test = *getPixel3(img, img->width / 2, img->height / 2);
 	remap(img, test, 0.35, 0.4, 5);
 	img4 = image3to4AlphaMap(img, map);
+	destroyImage(img);
 	printStaticImage4(img4);
 	destroyImage(img4);
 }

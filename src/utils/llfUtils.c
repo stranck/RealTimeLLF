@@ -47,6 +47,10 @@ Kernel createFilter(){
 	}
 	return filter;
 }
+void destroyFilter(Kernel *filter){
+	free(*filter);
+	filter = NULL;
+}
 
 Pyramid createPyramid(uint32_t width, uint32_t height, uint8_t nLevels){ //Pyramids has one more layer!
 	Pyramid p = malloc(nLevels * sizeof(Image3*));
@@ -56,6 +60,13 @@ Pyramid createPyramid(uint32_t width, uint32_t height, uint8_t nLevels){ //Pyram
 		height = height / 2 + (height & 1);
 	}
 	return p;
+}
+void destroyPyramid(Pyramid *p, uint8_t nLevels){
+	Pyramid p_local = *p;
+	for(uint8_t i = 0; i <= nLevels; i++)
+		destroyImage(p_local[i]);
+	free(p_local);
+	p = NULL;
 }
 
 void convolve(Image3 *dest, Image3 *source, Kernel kernel) {
