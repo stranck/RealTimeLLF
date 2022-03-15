@@ -32,6 +32,8 @@ Image3 * image4to3(Image4 *img);
 Image4 * image3to4FixedAlpha(Image3 *img, double alpha);
 Image4 * image3to4AlphaMap(Image3 *img, AlphaMap alphaMap);
 
+void subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY);
+
 void imgcpy3(Image3 *dest, Image3 *source);
 
 #define destroyImage(img) {\
