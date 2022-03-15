@@ -79,3 +79,10 @@ Image4 * image3to4AlphaMap(Image3 *img, AlphaMap alphaMap){
 	}
 	return ret;
 }
+
+
+void imgcpy3(Image3 *dest, Image3 *source){
+	dest->width = source->width;
+	dest->height = source->height;
+	memcpy(dest->pixels, source->pixels, dest->width * dest->height);
+}

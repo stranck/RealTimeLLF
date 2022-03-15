@@ -20,10 +20,19 @@ inline Pixel3 * getPixel3Vec(Image3 *img, Vec2u32 v){
 	return &img->pixels[v.y * img->width + v.x];
 }
 
+inline void setPixel3(Image3 *img, uint32_t x, uint32_t y, Pixel3 *px){
+	img->pixels[y * img->width + x] = *px;
+}
+inline void setPixel3Vec(Image3 *img, Vec2u32 v, Pixel3 *px){
+	img->pixels[v.y * img->width + v.x] = *px;
+}
+
 AlphaMap getAlphaMap(Image4 *img);
 Image3 * image4to3(Image4 *img);
 Image4 * image3to4FixedAlpha(Image3 *img, double alpha);
 Image4 * image3to4AlphaMap(Image3 *img, AlphaMap alphaMap);
+
+void imgcpy3(Image3 *dest, Image3 *source);
 
 #define destroyImage(img) {\
 	free(img -> pixels); \
