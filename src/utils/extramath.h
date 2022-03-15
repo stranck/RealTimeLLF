@@ -2,11 +2,12 @@
 
 #include <math.h>
 
-inline double min(double a, double b) { return (a < b) ? a : b; }
-inline double max(double a, double b) { return (a > b) ? a : b; }
+#define min(a, b) ({ (a < b) ? a : b; })
+#define max(a, b) ({ (a > b) ? a : b; })
 
 inline double clamp(double a, double min_, double max_) {
-	return min(max(a, min_), max_);
+	double m = max(a, min_);
+	return min(m, max_);
 }
 
 inline double smoothstep(double a, double b, double u) {
