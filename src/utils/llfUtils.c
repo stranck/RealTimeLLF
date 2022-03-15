@@ -7,7 +7,7 @@
 
 #include <math.h>
 
-void remap(Image3 * img, Pixel3 g0, double sigma, double alpha, double beta){
+void remap(Image3 * img, const Pixel3 g0, double sigma, double alpha, double beta){
 	int size = img -> width * img -> height;
 	Pixel3 *pixels = img -> pixels;
 	for(int i = 0; i < size; i++){
@@ -36,7 +36,6 @@ void remap(Image3 * img, Pixel3 g0, double sigma, double alpha, double beta){
 	}
 }
 
-#define KERNEL_DIMENSION 5
 Kernel createFilter(){
 	const double params[KERNEL_DIMENSION] = {0.05, 0.25, 0.4, 0.25, 0.05};
 	Kernel filter = malloc(KERNEL_DIMENSION * KERNEL_DIMENSION * sizeof(double));

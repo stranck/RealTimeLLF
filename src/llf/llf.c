@@ -34,34 +34,74 @@ Image4 upsample(Image4 I, double filter[]){
 	return convolve(upsampled, filter);
 }*/
 
-void downsample(Image3 *outImg, Image3 *inImg, uint32_t *width, uint32_t *height, Kernel filter, Image3 *buffer){
-	convolve(buffer, inImg, filter);
+void downsample(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter, Image3 *buffer){
+	convolve(buffer, source, filter);
 	uint32_t originalW = *width, originalH = *height;
 	*width /= 2;
 	*height /= 2;
-	outImg->width = *width;
-	outImg->height = *height;
+	dest->width = *width;
+	dest->height = *height;
 	uint32_t y;
 	uint32_t startingX = originalW & 1;
 	uint32_t startingY = originalH & 1;
 	for(y = startingY; y < originalH; y += 2) {
 		uint32_t x;
 		for(x = startingX; x < originalW; x += 2) {
-			setPixel3(outImg, x / 2, y / 2, getPixel3(buffer, x - startingX, y - startingY));
+			setPixel3(dest, x / 2, y / 2, getPixel3(buffer, x - startingX, y - startingY));
+		}
+	}
+}
+void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter){
+	const uint32_t originalW = *width, originalH = *height;
+	*width /= 2;
+	*height /= 2;
+	dest->width = *width;
+	dest->height = *height;
+	uint32_t y;
+	const uint32_t startingX = originalW & 1;
+	const uint32_t startingY = originalH & 1;
+	const uint8_t  rows = KERNEL_DIMENSION;
+	const uint8_t  cols = KERNEL_DIMENSION;
+	const int32_t  xstart = -1 * cols / 2;
+	const int32_t  ystart = -1 * rows / 2;
+
+	for (uint32_t j = 0; j < originalH; j += 2) {
+		for (uint32_t i = 0; i < originalW; i += 2) {
+			Pixel3 c = zero3f;
+			for (uint32_t y = 0; y < rows; y++) {
+                int32_t jy = j + ystart + y;
+				for (uint32_t x = 0; x < cols; x++) {
+                    int32_t ix = i + xstart + x;
+                    if (ix >= 0 && ix < dest->width && jy >= 0 && jy < dest->height) {
+						double kern_elem = filter[x][y];
+						Pixel3 px = *getPixel3(source, ix - startingX, jy - startingY);
+
+						c.x += px.x * kern_elem;
+						c.y += px.y * kern_elem;
+						c.z += px.z * kern_elem;
+					} else {
+						double kern_elem = filter[x][y];
+						Pixel3 px = *getPixel3(source, i - startingX, j - startingY);
+
+						c.x += px.x * kern_elem;
+						c.y += px.y * kern_elem;
+						c.z += px.z * kern_elem;
+					}
+				}
+			}
+			setPixel3(dest, i / 2, j / 2, &c);
 		}
 	}
 }
 
-void gaussianPyramid(Pyramid outPyr, Image3 *inImg, uint8_t nLevels, Kernel filter, Image3 *buffer){
+void gaussianPyramid(Pyramid outPyr, Image3 *inImg, uint8_t nLevels, Kernel filter){
 	imgcpy3(outPyr[0], inImg);
 	uint32_t width = inImg->width, height = inImg->height;
 	//if(0 <= nLevels){ //So it don't need to copy two times the whole img
-		downsample(buffer, inImg, &width, &height, filter, outPyr[1]); //outPyr[n] is used as a temp buffer
-		imgcpy3(outPyr[1], buffer);
+		downsampleConvolve(outPyr[1], inImg, &width, &height, filter);
 	//}
 	for(uint8_t i = 1; i < nLevels; i++){
-		downsample(buffer, outPyr[i], &width, &height, filter, outPyr[i + 1]);
-		imgcpy3(outPyr[i + 1], buffer);
+		downsampleConvolve(outPyr[i + 1], outPyr[i], &width, &height, filter);
 	}
 }
 
@@ -76,7 +116,7 @@ Image3 * llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLeve
 	Pyramid bufferLaplacianPyramid = createPyramid(width, height, nLevels);
 	Image3 *bufferImg = makeImage3(width, height);
 
-	gaussianPyramid(gaussPyramid, img, nLevels, filter, bufferImg);
+	gaussianPyramid(gaussPyramid, img, nLevels, filter);
 	for(uint8_t lev = 0; lev < nLevels; lev++){
 			Image3 *currentGaussLevel = gaussPyramid[lev];
 			uint32_t gaussianWidth = currentGaussLevel->width, gaussianHeight = currentGaussLevel->height;
@@ -103,10 +143,10 @@ Image3 * llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLeve
 					uint32_t full_res_roi_x = full_res_x - base_x;
 
 					Pixel3 g0 = *getPixel3(currentGaussLevel, x, y);
-					Image3 *subregion = subimage(img, base_x, end_x, base_y, end_y); //TODO
-					remap(subregion, g0, sigma, alpha, beta);
+					subimage(bufferLaplacianPyramid[0], img, base_x, end_x, base_y, end_y); //Using bufferLaplacianPyramid[0] as temp buffer
+					remap(bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
 
-					gaussian_pyramid(bufferGaussPyramid, subregion, lev + 1, filter, bufferImg);
+					gaussian_pyramid(bufferGaussPyramid, bufferLaplacianPyramid[0], lev + 1, filter, bufferImg);
 					laplacian_pyramid(bufferLaplacianPyramid, bufferGaussPyramid, filter, bufferImg); //TODO
 
 					setPixel(outputLaplacian[lev], x, y, getPixel(bufferLaplacianPyramid[lev], full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
