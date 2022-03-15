@@ -58,7 +58,6 @@ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t 
 	*height /= 2;
 	dest->width = *width;
 	dest->height = *height;
-	uint32_t y;
 	const uint32_t startingX = originalW & 1;
 	const uint32_t startingY = originalH & 1;
 	const uint8_t  rows = KERNEL_DIMENSION;
@@ -123,10 +122,10 @@ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 	uint32_t uppedH = smallHeight << 1;
 	dest->width = uppedW;
 	dest->height = uppedH;
-	uint8_t  rows = KERNEL_DIMENSION;
-	uint8_t  cols = KERNEL_DIMENSION;
-	int32_t  xstart = -1 * cols / 2;
-	int32_t  ystart = -1 * rows / 2;
+	const uint8_t  rows = KERNEL_DIMENSION;
+	const uint8_t  cols = KERNEL_DIMENSION;
+	const int32_t  xstart = -1 * cols / 2;
+	const int32_t  ystart = -1 * rows / 2;
 
 	for (uint32_t j = 0; j < uppedW; j++) {
 		for (uint32_t i = 0; i < uppedH; i++) {
@@ -168,16 +167,16 @@ void gaussianPyramid(Pyramid outPyr, Image3 *inImg, uint8_t nLevels, Kernel filt
 	}
 }
 
-void laplacian_pyramid(Pyramid laplacian, Pyramid tempGauss, int nLevels, Kernel filter){
-	for(uint32_t i = 0; i < nLevels; i++){ //Not sure about the -1
+void laplacian_pyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Kernel filter){
+	for(uint8_t i = 0; i < nLevels; i++){ //Not sure about the -1
 		Image3 *upsampled = laplacian[i];
 		upsampleConvolve(upsampled, tempGauss[i + 1], filter);
 
 		Image3 *current = tempGauss[i];
 		uint32_t yEnd = min(current->height, upsampled->height);
 		uint32_t xEnd = min(current->width, upsampled->width);
-		for (int y = 0; y < yEnd; y++){
-			for (int x = 0; x < xEnd; x++){
+		for (uint32_t y = 0; y < yEnd; y++){
+			for (uint32_t x = 0; x < xEnd; x++){
 				Pixel3 *upsPtr = getPixel3(upsampled, x, y);
 				Pixel3 ups = *upsPtr;
 				Pixel3 crr = *getPixel3(current, x, y);
@@ -189,7 +188,35 @@ void laplacian_pyramid(Pyramid laplacian, Pyramid tempGauss, int nLevels, Kernel
 	return laplacian;
 }
 
-Image3 * llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
+void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter){
+	Image3 *result = laplacianPyr[nLevels];
+	Pixel3 *destPxs = dest->pixels;
+	if(nLevels - 1 >= 0){ //We save one extra copy by using dest as a temp buffer
+		Image3 *pyr = laplacianPyr[nLevels - 1];
+		uint32_t pyrWidth = pyr->width, pyrHeight = pyr->height;
+		upsampleConvolve(dest, result, filter);
+
+		Pixel3 *psxPyr = pyr->pixels, *psxUpsampled = destPxs;
+		uint32_t sizeUpsampled = min(dest->width, pyrWidth) * min(dest->height, pyrHeight);
+		for(uint32_t px = 0; px < sizeUpsampled; px++)
+			psxUpsampled[px] = vec3Add(psxPyr[px], psxUpsampled[px], Pixel3);
+	}
+	for(int8_t lev = nLevels - 2; lev >= 0; lev--){			
+		Image3 *pyr = laplacianPyr[lev];
+		uint32_t pyrWidth = pyr->width, pyrHeight = pyr->height;
+		upsampleConvolve(result, dest, filter);
+
+		Pixel3 *psxPyr = pyr->pixels, *psxUpsampled = result->pixels;
+		uint32_t sizeUpsampled = min(result->width, pyrWidth) * min(result->height, pyrHeight);
+		for(uint32_t px = 0; px < sizeUpsampled; px++)
+			destPxs[px] = vec3Add(psxPyr[px], psxUpsampled[px], Pixel3);
+		dest->width = result->width;
+		dest->height = result->height;
+	}
+
+}
+
+void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
 	uint32_t width = img->width, height = img->height;
 	nLevels = min(nLevels, 5);
 	nLevels = max(nLevels, 3);//int(ceil(std::abs(std::log2(min(width, height)) - 3))) + 2;
@@ -203,42 +230,43 @@ Image3 * llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLeve
 
 	gaussianPyramid(gaussPyramid, img, nLevels, filter);
 	for(uint8_t lev = 0; lev < nLevels; lev++){
-			Image3 *currentGaussLevel = gaussPyramid[lev];
-			uint32_t gaussianWidth = currentGaussLevel->width, gaussianHeight = currentGaussLevel->height;
-			uint32_t subregionDimension = 3 * ((1 << (lev + 2)) - 1) / 2;
+		Image3 *currentGaussLevel = gaussPyramid[lev];
+		uint32_t gaussianWidth = currentGaussLevel->width, gaussianHeight = currentGaussLevel->height;
+		uint32_t subregionDimension = 3 * ((1 << (lev + 2)) - 1) / 2;
 
-			for(uint32_t y = 0; y < gaussianHeight; y++){
+		for(uint32_t y = 0; y < gaussianHeight; y++){
 
-				//no fuckin clues what this calcs are
-				uint32_t full_res_y = (1 << lev) * y;
-				uint32_t roi_y0 = full_res_y - subregionDimension;
-				uint32_t roi_y1 = full_res_y + subregionDimension + 1;
-				uint32_t base_y = max(0, roi_y0);
-				uint32_t end_y = min(roi_y1, height);
-				uint32_t full_res_roi_y = full_res_y - base_y;
-				uint32_t full_res_roi_yShifted = full_res_roi_y >> lev;
+			//no fuckin clues what this calcs are
+			int32_t full_res_y = (1 << lev) * y;
+			int32_t roi_y0 = full_res_y - subregionDimension;
+			int32_t roi_y1 = full_res_y + subregionDimension + 1;
+			int32_t base_y = max(0, roi_y0);
+			int32_t end_y = min(roi_y1, height);
+			int32_t full_res_roi_y = full_res_y - base_y;
+			int32_t full_res_roi_yShifted = full_res_roi_y >> lev;
 
-				for(uint32_t x = 0; x < gaussianWidth; x++){
-					//no fuckin clues what this calcs are PT2
-					uint32_t full_res_x = (1 << lev) * x;
-					uint32_t roi_x0 = full_res_x - subregionDimension;
-					uint32_t roi_x1 = full_res_x + subregionDimension + 1;
-					uint32_t base_x = max(0, roi_x0);
-					uint32_t end_x = min(roi_x1, width);
-					uint32_t full_res_roi_x = full_res_x - base_x;
+			for(uint32_t x = 0; x < gaussianWidth; x++){
+				//no fuckin clues what this calcs are PT2
+				int32_t full_res_x = (1 << lev) * x;
+				int32_t roi_x0 = full_res_x - subregionDimension;
+				int32_t roi_x1 = full_res_x + subregionDimension + 1;
+				int32_t base_x = max(0, roi_x0);
+				int32_t end_x = min(roi_x1, width);
+				int32_t full_res_roi_x = full_res_x - base_x;
 
-					Pixel3 g0 = *getPixel3(currentGaussLevel, x, y);
-					subimage(bufferLaplacianPyramid[0], img, base_x, end_x, base_y, end_y); //Using bufferLaplacianPyramid[0] as temp buffer
-					remap(bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
+				Pixel3 g0 = *getPixel3(currentGaussLevel, x, y);
+				subimage(bufferLaplacianPyramid[0], img, base_x, end_x, base_y, end_y); //Using bufferLaplacianPyramid[0] as temp buffer
+				remap(bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
 
-					uint8_t currentNLevels = lev + 1;
-					gaussian_pyramid(bufferGaussPyramid, bufferLaplacianPyramid[0], currentNLevels, filter);
-					laplacian_pyramid(bufferLaplacianPyramid, bufferGaussPyramid, currentNLevels, filter);
+				uint8_t currentNLevels = lev + 1;
+				gaussian_pyramid(bufferGaussPyramid, bufferLaplacianPyramid[0], currentNLevels, filter);
+				laplacian_pyramid(bufferLaplacianPyramid, bufferGaussPyramid, currentNLevels, filter);
 
-					setPixel3(outputLaplacian[lev], x, y, getPixel(bufferLaplacianPyramid[lev], full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
-				}
+				setPixel3(outputLaplacian[lev], x, y, getPixel(bufferLaplacianPyramid[lev], full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
 			}
 		}
+	}
+	collapse(img, outputLaplacian, nLevels, filter);
 }
 
 int main(){

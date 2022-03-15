@@ -59,10 +59,10 @@ Pyramid createPyramid(uint32_t width, uint32_t height, uint8_t nLevels){ //Pyram
 }
 
 void convolve(Image3 *dest, Image3 *source, Kernel kernel) {
-	uint8_t  rows = KERNEL_DIMENSION;
-	uint8_t  cols = KERNEL_DIMENSION;
-	int32_t  xstart = -1 * cols / 2;
-	int32_t  ystart = -1 * rows / 2;
+	const uint8_t  rows = KERNEL_DIMENSION;
+	const uint8_t  cols = KERNEL_DIMENSION;
+	const int32_t  xstart = -1 * cols / 2;
+	const int32_t  ystart = -1 * rows / 2;
 
 	for (uint32_t j = 0; j < dest->height; j++) {
 		for (uint32_t i = 0; i < dest->width; i++) {
