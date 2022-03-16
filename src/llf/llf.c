@@ -39,23 +39,33 @@ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t 
 	const uint8_t  cols = KERNEL_DIMENSION;
 	const int32_t  xstart = -1 * cols / 2;
 	const int32_t  ystart = -1 * rows / 2;
+	//printff("+++ Dest: %dx%d\t\t Allc: %dx%d\t\t Sorc: %dx%d\n", dest->width, dest->height, dest->allocatedW, dest->height, source->width, source->height);
 
-	for (uint32_t j = 0; j < originalH; j += 2) {
-		for (uint32_t i = 0; i < originalW; i += 2) {
+	for (uint32_t j = startingY; j < originalH; j += 2) {
+		for (uint32_t i = startingX; i < originalW; i += 2) {
 			Pixel3 c = zero3f;
+			
 			for (uint32_t y = 0; y < rows; y++) {
-                int32_t jy = j + ystart + y;
+
+                int32_t jy = (j + ystart + y) * 2 - startingY;
+				
 				for (uint32_t x = 0; x < cols; x++) {
-                    int32_t ix = i + xstart + x;
+
+                    int32_t ix = (i + xstart + x) * 2  - startingX;
+
                     if (ix >= 0 && ix < dest->width && jy >= 0 && jy < dest->height) {
-						double kern_elem = filter[x][y];
+						
+						double kern_elem = filter[getKernelPosition(x, y)];
+						//printff("Getting pixel #1: %d ; %d (Org: %d ; %d) (xy:  %d ; %d) (startXY: %d ; %d)\n", ix, jy, ix + startingX, jy + startingY, x, y, xstart, ystart);
 						Pixel3 px = *getPixel3(source, ix - startingX, jy - startingY);
 
 						c.x += px.x * kern_elem;
 						c.y += px.y * kern_elem;
 						c.z += px.z * kern_elem;
 					} else {
-						double kern_elem = filter[x][y];
+						
+						double kern_elem = filter[getKernelPosition(x, y)];
+						//printff("Getting pixel #2: %d ; %d (Org: %d ; %d)\n", i - startingX, j - startingY, i, j);
 						Pixel3 px = *getPixel3(source, i - startingX, j - startingY);
 
 						c.x += px.x * kern_elem;
@@ -64,6 +74,7 @@ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t 
 					}
 				}
 			}
+			//printff("Setting pixel: %d ; %d (Org: %d ; %d)\n", i / 2, j / 2, i, j);
 			setPixel3(dest, i / 2, j / 2, &c);
 		}
 	}
@@ -110,14 +121,14 @@ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 				for (uint32_t x = 0; x < cols; x++) {
                     int32_t ix = i + xstart + x;
                     if (ix >= 0 && ix < dest->width && jy >= 0 && jy < dest->height) {
-						double kern_elem = kernel[x][y];
+						double kern_elem = kernel[getKernelPosition(x, y)];
 						Pixel3 px = *getPixel3(source, ix / 2, jy / 2);
 
 						c.x += px.x * kern_elem;
 						c.y += px.y * kern_elem;
 						c.z += px.z * kern_elem;
 					} else {
-						double kern_elem = kernel[x][y];
+						double kern_elem = kernel[getKernelPosition(x, y)];
 						Pixel3 px = *getPixel3(source, i / 2, j / 2);
 
 						c.x += px.x * kern_elem;
@@ -125,21 +136,31 @@ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 						c.z += px.z * kern_elem;
 					}
 				}
-			}
+			} 
 			setPixel3(dest, i, j, &c);
 		}
 	}
 }
 
 void gaussianPyramid(Pyramid outPyr, Image3 *inImg, uint8_t nLevels, Kernel filter){
+	//print("Copying img");
+	//printff("outPyr[0]: %dx%d\t\t inImg: %dx%d\n", outPyr[0]->width, outPyr[0]->height, inImg->width, inImg->height);
 	imgcpy3(outPyr[0], inImg);
+	//print("Copying img DONE");
 	uint32_t width = inImg->width, height = inImg->height;
+	//print("Downsampling");
+	//printff("outPyr[1]: %dx%d\t\t inImg: %dx%d\n", outPyr[1]->width, outPyr[1]->height, inImg->width / 2, inImg->height / 2);
 	//if(0 <= nLevels){ //So it don't need to copy two times the whole img
 		downsampleConvolve(outPyr[1], inImg, &width, &height, filter);
+	//print("Downsampling DONE");
 	//}
 	for(uint8_t i = 1; i < nLevels; i++){
+		//printf("%d / %d\n", i, nLevels); fflush(stdout);
+		//printff("outPyr[i + 1]: %dx%d\t\t outPyr[i]: %dx%d\n", outPyr[i + 1]->width, outPyr[i + 1]->height, outPyr[i]->width, outPyr[i]->height);
 		downsampleConvolve(outPyr[i + 1], outPyr[i], &width, &height, filter);
+		//print("downsample done");
 	}
+	//print("Exiting");
 }
 
 void laplacianPyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Kernel filter){
@@ -201,12 +222,16 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
 	Pyramid bufferLaplacianPyramid = createPyramid(width, height, nLevels);
 
 	gaussianPyramid(gaussPyramid, img, nLevels, filter);
-	for(uint8_t lev = 0; lev < nLevels; lev++){
+	imgcpy3(img, gaussPyramid[0]);
+	print("Testing convolve"); //upsampleConvolve(img, gaussPyramid[2], filter);
+	print("Entering loop");
+	/*for(uint8_t lev = 0; lev < nLevels; lev++){
 		Image3 *currentGaussLevel = gaussPyramid[lev];
 		uint32_t gaussianWidth = currentGaussLevel->width, gaussianHeight = currentGaussLevel->height;
 		uint32_t subregionDimension = 3 * ((1 << (lev + 2)) - 1) / 2;
 
 		for(uint32_t y = 0; y < gaussianHeight; y++){
+			printff("laplacian inner loop %d/%d\ty = %d/%d\n", lev, (nLevels - 1), y, gaussianHeight);
 
 			//no fuckin clues what this calcs are
 			int32_t full_res_y = (1 << lev) * y;
@@ -237,24 +262,27 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
 				setPixel3(outputLaplacian[lev], x, y, getPixel3(bufferLaplacianPyramid[lev], full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
 			}
 		}
-	}
-	collapse(img, outputLaplacian, nLevels, filter);
+	}*/
+	print("Exiting loop");
+	//collapse(img, outputLaplacian, nLevels, filter);
 	
-	destroyPyramid(&gaussPyramid, nLevels);
+	print("Destorying stuff PEW PEW");
+	/*destroyPyramid(&gaussPyramid, nLevels);
 	destroyPyramid(&outputLaplacian, nLevels);
 	destroyPyramid(&bufferGaussPyramid, nLevels);
 	destroyPyramid(&bufferLaplacianPyramid, nLevels);
-	destroyFilter(&filter);
+	destroyFilter(&filter);*/
 }
 
 int main(){
+	print("\n\n\n  OUTPUT  \nvvvvvvvvvv");
 	Image4 *img4 = getStaticImage4();
 	Image3 *img = image4to3(img4);
 	AlphaMap map = getAlphaMap(img4);
-	destroyImage(img4);
+	//destroyImage(img4);
 	llf(img, 0.35, 0.4, 5, 3);
 	img4 = image3to4AlphaMap(img, map);
-	destroyImage(img);
+	//destroyImage(img);
 	printStaticImage4(img4);
-	destroyImage(img4);
+	//	destroyImage(img4);
 }

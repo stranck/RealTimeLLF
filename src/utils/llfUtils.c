@@ -6,6 +6,7 @@
 #include "utils.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
 
 void remap(Image3 * img, const Pixel3 g0, double sigma, double alpha, double beta){
@@ -41,11 +42,26 @@ Kernel createFilter(){
 	const double params[KERNEL_DIMENSION] = {0.05, 0.25, 0.4, 0.25, 0.05};
 	Kernel filter = malloc(KERNEL_DIMENSION * KERNEL_DIMENSION * sizeof(double));
 
-	for(uint8_t i = 0; i < 5; i++){
-		for(uint8_t j = 0; j < 5; j++){
-			filter[i][j] = params[i] * params[j];
+	for(uint8_t i = 0; i < KERNEL_DIMENSION; i++){
+		for(uint8_t j = 0; j < KERNEL_DIMENSION; j++){
+			filter[getKernelPosition(i, j)] = params[i] * params[j];
 		}
 	}
+
+	/*for(uint8_t i = 0; i < KERNEL_DIMENSION; i++){
+		puts("");
+		for(uint8_t j = 0; j < KERNEL_DIMENSION; j++){
+			printf("%f\t", filter[getKernelPosition(i, j)]);
+		}
+	}
+	puts("\n");
+	for(int i = 0; i < 25; i++){
+		if(i % 5 == 0)
+			puts("");
+		printf("%f\t", filter[i]);
+	}
+	puts("");*/
+
 	return filter;
 }
 void destroyFilter(Kernel *filter){
@@ -84,14 +100,14 @@ void convolve(Image3 *dest, Image3 *source, Kernel kernel) {
 				for (uint32_t x = 0; x < cols; x++) {
                     int32_t ix = i + xstart + x;
                     if (ix >= 0 && ix < dest->width && jy >= 0 && jy < dest->height) {
-						double kern_elem = kernel[x][y];
+						double kern_elem = kernel[getKernelPosition(x, y)];
 						Pixel3 px = *getPixel3(source, ix, jy);
 
 						c.x += px.x * kern_elem;
 						c.y += px.y * kern_elem;
 						c.z += px.z * kern_elem;
 					} else {
-						double kern_elem = kernel[x][y];
+						double kern_elem = kernel[getKernelPosition(x, y)];
 						Pixel3 px = *getPixel3(source, i, j);
 
 						c.x += px.x * kern_elem;
