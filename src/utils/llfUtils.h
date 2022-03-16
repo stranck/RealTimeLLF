@@ -10,3 +10,5 @@ void destroyFilter(Kernel *filter);
 
 Pyramid createPyramid(uint32_t width, uint32_t height, uint8_t nLevels);
 void destroyPyramid(Pyramid *p, uint8_t nLevels);
+
+void convolve(Image3 *dest, Image3 *source, Kernel kernel);

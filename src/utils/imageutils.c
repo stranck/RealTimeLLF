@@ -94,7 +94,7 @@ void subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uin
 	for(uint32_t y = 0; y < h; y++){
 		uint32_t finalY = startY + y;
 		for(uint32_t x = 0; x < w; x++){
-			setPixel3(dest, x, y, getPixel3source(source, startX + x, finalY));
+			setPixel3(dest, x, y, getPixel3(source, startX + x, finalY));
 		}
 	}
 }

@@ -1,9 +1,9 @@
 #include "llfUtils.h"
 
-#include "../utils/imageutils.h"
-#include "../utils/extramath.h"
-#include "../utils/vects.h"
-#include "../utils/utils.h"
+#include "imageutils.h"
+#include "extramath.h"
+#include "vects.h"
+#include "utils.h"
 
 #include <stdlib.h>
 #include <math.h>
