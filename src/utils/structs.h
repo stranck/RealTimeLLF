@@ -3,12 +3,6 @@
 #include <stdint.h>
 #include "vects.h"
 
-/*typedef struct {
-	uint8_t r;
-	uint8_t g;
-	uint8_t b;
-	uint8_t a;
-} Pixel;*/
 typedef Vec4f Pixel4;
 typedef Vec3f Pixel3;
 typedef uint8_t* AlphaMap;

@@ -1,7 +1,6 @@
 #include "vects.h"
 
-const Vec3f zero3f = {0, 0, 0};
-/*onst Vec2i32 zero2i32 = {0, 0};
+const Vec2i32 zero2i32 = {0, 0};
 const Vec3i32 zero3i32 = {0, 0, 0};
 const Vec4i32 zero4i32 = {0, 0, 0, 0};
 
@@ -34,4 +33,4 @@ const Vec4f zero4f = {0, 0, 0, 0};
 
 const Vec2f one2f = {1, 1};
 const Vec3f one3f = {1, 1, 1};
-const Vec4f one4f = {1, 1, 1, 1};*/
+const Vec4f one4f = {1, 1, 1, 1};
