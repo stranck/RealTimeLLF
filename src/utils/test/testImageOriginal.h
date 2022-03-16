@@ -33,7 +33,7 @@ void printStaticImage4(Image4 *img){
 	Pixel4 *pxs = img->pixels;
 	const uint32_t width = img->width;
 	const uint32_t height = img->height;
-	printf("%d %d\n", width, height);
+	printf("STATIC_IMG_DIMENSIONS: %d %d\n", width, height);
 	Vec4u8 *buffer = (Vec4u8 *) calloc(width, sizeof(Vec4u8));
 	for(uint32_t i = 0; i < height; i++){
 		Pixel4 *currentLine = &pxs[width * i];

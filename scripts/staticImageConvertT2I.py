@@ -10,9 +10,11 @@ f = open(args[1], "r")
 lines = f.readlines()
 f.close()
 
+while(not lines[0].startswith("STATIC_IMG_DIMENSIONS: ")):
+	lines = lines[1:]
 l0 = lines[0].strip().split()
-width = int(l0[0])
-height = int(l0[1])
+width = int(l0[1])
+height = int(l0[2])
 print(width, height)
 img = Image.new('RGBA', (width, height))
 
