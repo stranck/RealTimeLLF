@@ -11,7 +11,20 @@ void printBuffer(uint8_t *data, uint32_t len){
 			value = value << 8;
 			value |= data[i++];
 		}
-		printf("%016lx", value);
+		while(x < 8){
+			value = value << 8;
+			x++;
+		}
+		//printf("\n%d / %d (%d)\t", i, len, i % 8);
+		if(i % 8 == 0) {
+			printf("%016lx", value);
+		} else {
+			for(x = 0; x < i % 8; x++){
+				printf("%02lx", value >> 56 & 0xff);
+				value = value << 8;
+			}
+			i += 2;
+		}
 	}
 }
 

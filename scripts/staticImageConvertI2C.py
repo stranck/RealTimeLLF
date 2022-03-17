@@ -68,12 +68,16 @@ rgba = im.convert('RGBA')
 
 out = ""
 
-for x in range(rgba.width):
+for y in range(rgba.height):
 	out += CHANGE_ROW
-	for y in range(rgba.height):
+	#print()
+	for x in range(rgba.width):
+		#print(rgba.getpixel((y, x)), end="")
+		#print(f"X: {x}\t Y: {y}\t Px: {rgba.getpixel((x, y))}")
 		out += getPixel(rgba.getpixel((x, y)))
 out = out[:-2]
 
+print(f"Original dimensions: {rgba.width}x{rgba.height}")
 fileOut = FILE.replace("%WIDTH%", f"{rgba.width}").replace("%HEIGHT%", f"{rgba.height}").replace("%DATA%", out)
 f = open(args[2], "w")
 f.write(fileOut)
