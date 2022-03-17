@@ -47,21 +47,6 @@ Kernel createFilter(){
 			filter[getKernelPosition(i, j)] = params[i] * params[j];
 		}
 	}
-
-	/*for(uint8_t i = 0; i < KERNEL_DIMENSION; i++){
-		puts("");
-		for(uint8_t j = 0; j < KERNEL_DIMENSION; j++){
-			printf("%f\t", filter[getKernelPosition(i, j)]);
-		}
-	}
-	puts("\n");
-	for(int i = 0; i < 25; i++){
-		if(i % 5 == 0)
-			puts("");
-		printf("%f\t", filter[i]);
-	}
-	puts("");*/
-
 	return filter;
 }
 void destroyFilter(Kernel *filter){

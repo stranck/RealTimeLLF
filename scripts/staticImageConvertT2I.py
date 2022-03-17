@@ -23,12 +23,10 @@ data = []
 print(f"Lines count: {len(lines)}")
 for l in lines:
 	currentData = bytes.fromhex(l)
-	#print(len(currentData))
 	byteIdx = 0
 	if(len(currentData)/4 != width):
 		print(f"Got row of {len(currentData)/4} pixels, expected {width}") 
 	while(byteIdx < len(currentData)):
-		#data.append((255, 0, 0, 255))
 		data.append((currentData[byteIdx + 0], currentData[byteIdx + 1], currentData[byteIdx + 2], currentData[byteIdx + 3]))
 		byteIdx += 4
 

@@ -70,10 +70,7 @@ out = ""
 
 for y in range(rgba.height):
 	out += CHANGE_ROW
-	#print()
 	for x in range(rgba.width):
-		#print(rgba.getpixel((y, x)), end="")
-		#print(f"X: {x}\t Y: {y}\t Px: {rgba.getpixel((x, y))}")
 		out += getPixel(rgba.getpixel((x, y)))
 out = out[:-2]
 
