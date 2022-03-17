@@ -31,6 +31,6 @@ llf : testimage bin
 
 .PHONY : testimage
 testimage :
-	python3 $(SCRIPTS)staticImageConvertI2C.py imgTest/razzi.jpg $(UTILS)test/testimage.h
+	python3 $(SCRIPTS)staticImageConvertI2C.py imgTest/flower.png $(UTILS)test/testimage.h
 
 all : bin openmp cuda llf
