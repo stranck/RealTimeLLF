@@ -36,6 +36,8 @@ void subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uin
 
 void imgcpy3(Image3 *dest, Image3 *source);
 
+void fillWithColor(Image3 *dest, Pixel3 *color);
+
 #define destroyImage(img) {\
 	free(img -> pixels); \
 	free(img); \

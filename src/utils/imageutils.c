@@ -100,3 +100,10 @@ void subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uin
 		}
 	}
 }
+
+void fillWithColor(Image3 *dest, Pixel3 *color){
+	uint32_t dim = dest->width * dest->height;
+	Pixel3 *pxs = dest->pixels;
+	for(uint32_t i = 0; i < dim; i++)
+		pxs[i] = *color;
+}
