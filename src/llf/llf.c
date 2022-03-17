@@ -103,6 +103,7 @@ void upsample(Image3 *dest, Image3 *source, Kernel filter, Image3 *buffer){
 	convolve(dest, buffer, filter);
 }
 void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
+	printff("Source addr: 0x%016lx    Pxs addr: 0x%016lx\n", source, source->pixels);
 	uint32_t smallWidth = source->width, smallHeight = source->height;
 	uint32_t uppedW = smallWidth << 1;
 	uint32_t uppedH = smallHeight << 1;
@@ -120,8 +121,9 @@ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
                 int32_t jy = j + ystart + y;
 				for (uint32_t x = 0; x < cols; x++) {
                     int32_t ix = i + xstart + x;
-                    if (ix >= 0 && ix < dest->width && jy >= 0 && jy < dest->height) {
+                    if (ix >= 0 && ix < uppedW && jy >= 0 && jy < uppedH) {
 						double kern_elem = kernel[getKernelPosition(x, y)];
+						//printff("Getting pixel #1: %d ; %d (Org: %d ; %d) (xy:  %d ; %d) (startXY: %d ; %d)\n", ix / 2, jy / 2, ix, jy, x, y, xstart, ystart);
 						Pixel3 px = *getPixel3(source, ix / 2, jy / 2);
 
 						c.x += px.x * kern_elem;
@@ -129,6 +131,7 @@ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 						c.z += px.z * kern_elem;
 					} else {
 						double kern_elem = kernel[getKernelPosition(x, y)];
+						//printff("Getting pixel #2: %d ; %d (Org: %d ; %d)\n", i / 2, j / 2, i, j);
 						Pixel3 px = *getPixel3(source, i / 2, j / 2);
 
 						c.x += px.x * kern_elem;
@@ -136,7 +139,8 @@ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 						c.z += px.z * kern_elem;
 					}
 				}
-			} 
+			}
+			//printff("Setting pixel: %d ; %d (Coming from: %d ; %d)\n", i, j, i / 2, j / 2);
 			setPixel3(dest, i, j, &c);
 		}
 	}
@@ -185,28 +189,38 @@ void laplacianPyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Ker
 
 void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter){
 	Image3 *result = laplacianPyr[nLevels];
-	Pixel3 *destPxs = dest->pixels;
-	if(nLevels - 1 >= 0){ //We save one extra copy by using dest as a temp buffer
+	Pixel3 *destPxs = dest->pixels, *psxUpsampled = result->pixels;
+	/*if(nLevels - 1 >= 0){ //We save one extra copy by using dest as a temp buffer
 		Image3 *pyr = laplacianPyr[nLevels - 1];
 		uint32_t pyrWidth = pyr->width, pyrHeight = pyr->height;
-		upsampleConvolve(dest, result, filter);
+		Pixel3 *psxPyr = pyr->pixels;
 
-		Pixel3 *psxPyr = pyr->pixels, *psxUpsampled = destPxs;
+		upsampleConvolve(dest, result, filter);
 		uint32_t sizeUpsampled = min(dest->width, pyrWidth) * min(dest->height, pyrHeight);
 		for(uint32_t px = 0; px < sizeUpsampled; px++)
 			psxUpsampled[px] = vec3Add(psxPyr[px], psxUpsampled[px], Pixel3);
-	}
-	for(int8_t lev = nLevels - 2; lev >= 0; lev--){			
+		result->width = dest->width;
+		result->height = dest->height;
+	}*/
+	printff("Remaining levels: %d\n", nLevels - 2);	
+	for(int8_t lev = nLevels - 1; lev >= 0; lev--){
+		//printff("#1 DEST    Source addr: 0x%016lx    Pxs addr: 0x%016lx\n", dest, dest->pixels);
+		//for(int i = 0; i <= nLevels; i++) printff("#1 LAPL[%d] Source addr: 0x%016lx    Pxs addr: 0x%016lx\n", i, laplacianPyr[i], laplacianPyr[i]->pixels);
+		//printff("%d / 0\n", lev);	
 		Image3 *pyr = laplacianPyr[lev];
 		uint32_t pyrWidth = pyr->width, pyrHeight = pyr->height;
-		upsampleConvolve(result, dest, filter);
+		Pixel3 *psxPyr = pyr->pixels;
 
-		Pixel3 *psxPyr = pyr->pixels, *psxUpsampled = result->pixels;
-		uint32_t sizeUpsampled = min(result->width, pyrWidth) * min(result->height, pyrHeight);
+		//printff("+++ Dest: %dx%d\t\t Allc: %dx%d\t\t Sorc: %dx%d\n", dest->width, dest->height, dest->allocatedW, dest->height, result->width, result->height);
+		upsampleConvolve(dest, result, filter);
+		//printff("#2 DEST    Source addr: 0x%016lx    Pxs addr: 0x%016lx\n", dest, dest->pixels);
+		//for(int i = 0; i <= nLevels; i++) printff("#2 LAPL[%d] Source addr: 0x%016lx    Pxs addr: 0x%016lx\n", i, laplacianPyr[i], laplacianPyr[i]->pixels);
+		//print("Returned from upsample");
+		uint32_t sizeUpsampled = min(dest->width, pyrWidth) * min(dest->height, pyrHeight);
 		for(uint32_t px = 0; px < sizeUpsampled; px++)
-			destPxs[px] = vec3Add(psxPyr[px], psxUpsampled[px], Pixel3);
-		dest->width = result->width;
-		dest->height = result->height;
+			psxUpsampled[px] = vec3Add(psxPyr[px], destPxs[px], Pixel3);
+		result->width = dest->width;
+		result->height = dest->height;
 	}
 
 }
@@ -225,7 +239,7 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
 	imgcpy3(img, gaussPyramid[0]);
 	print("Testing convolve"); //upsampleConvolve(img, gaussPyramid[2], filter);
 	print("Entering loop");
-	/*for(uint8_t lev = 0; lev < nLevels; lev++){
+	for(uint8_t lev = 0; lev < nLevels; lev++){
 		Image3 *currentGaussLevel = gaussPyramid[lev];
 		uint32_t gaussianWidth = currentGaussLevel->width, gaussianHeight = currentGaussLevel->height;
 		uint32_t subregionDimension = 3 * ((1 << (lev + 2)) - 1) / 2;
@@ -262,9 +276,9 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
 				setPixel3(outputLaplacian[lev], x, y, getPixel3(bufferLaplacianPyramid[lev], full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
 			}
 		}
-	}*/
+	}
 	print("Exiting loop");
-	//collapse(img, outputLaplacian, nLevels, filter);
+	collapse(img, outputLaplacian, nLevels, filter);
 	
 	print("Destorying stuff PEW PEW");
 	/*destroyPyramid(&gaussPyramid, nLevels);
