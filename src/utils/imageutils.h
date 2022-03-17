@@ -4,6 +4,7 @@
 
 Image4 * makeImage4(uint32_t width, uint32_t height);
 Image4 * makeImage4WithData(uint32_t width, uint32_t height, Pixel4 pixels[]);
+Image4 * makeImage4WithDataPtr(uint32_t width, uint32_t height, Pixel4 *pixels);
 Image3 * makeImage3(uint32_t width, uint32_t height);
 Image3 * makeImage3WithData(uint32_t width, uint32_t height, Pixel3 pixels[]);
 

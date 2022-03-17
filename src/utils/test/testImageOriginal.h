@@ -15,7 +15,7 @@ Image4 * getStaticImage4(){
 	uint32_t data[] = {
 		0x10000000
 	};
-	Pixel4 pxs[dim];
+	Pixel4 *pxs = (Pixel4 *) malloc(width * height * sizeof(Pixel4));
 	for(uint32_t i = 0; i < dim; i++){
 		// 1 : out = 255 : in
 		uint8_t r = (data[i] >> 24) & 0xff;
@@ -25,7 +25,7 @@ Image4 * getStaticImage4(){
 		Pixel4 p = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f};
 		pxs[i] = p;
 	}
-	Image4 *img = makeImage4WithData(width, height, pxs);
+	Image4 *img = makeImage4WithDataPtr(width, height, pxs);
 	return img;
 }
 
