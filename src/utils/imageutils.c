@@ -36,8 +36,6 @@ Image3 * makeImage3(uint32_t width, uint32_t height){
 	i -> width = width;
 	i -> height = height;
 	i -> pixels = img;
-	i -> allocatedW = width;
-	i -> allocatedH = height;
 	return i;
 }
 Image3 * makeImage3WithData(uint32_t width, uint32_t height, Pixel3 pixels[]){
