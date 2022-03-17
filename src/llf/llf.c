@@ -240,23 +240,33 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
 	print("Collapsing");
 	collapse(img, outputLaplacian, nLevels, filter);
 	
-	/*destroyPyramid(&gaussPyramid, nLevels);
+	print("Destroy pyramid #1");
+	destroyPyramid(&gaussPyramid, nLevels);
+	print("Destroy pyramid #2");
 	destroyPyramid(&outputLaplacian, nLevels);
+	print("Destroy pyramid #3");
 	destroyPyramid(&bufferGaussPyramid, nLevels);
+	print("Destroy pyramid #4");
 	destroyPyramid(&bufferLaplacianPyramid, nLevels);
-	destroyFilter(&filter);*/
+	print("Destroy filter");
+	destroyFilter(&filter);
 }
 
 int main(){
 	Image4 *img4 = getStaticImage4();
 	Image3 *img = image4to3(img4);
 	AlphaMap map = getAlphaMap(img4);
+	printff("img4 - img: %d\n", ((long) img4) - ((long) img));
+	print("Destroy img #1");
+	destroyImage4(&img4);
 
 	llf(img, 0.35, 0.4, 5, 3);
 
 	clampImage3(img);
 	img4 = image3to4AlphaMap(img, map);
-	//destroyImage(img);
-	printStaticImage4(img4);
-	//destroyImage(img4);
+	print("Destroy img #2");
+	destroyImage3(&img);
+	//printStaticImage4(img4);
+	print("Destroy img #3");
+	destroyImage4(&img4);
 }

@@ -1,5 +1,7 @@
 #include "imageutils.h"
 #include "extramath.h"
+#include "utils.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
@@ -20,6 +22,7 @@ Image4 * makeImage4WithData(uint32_t width, uint32_t height, Pixel4 pixels[]){
 	i -> width = width;
 	i -> height = height;
 	i -> pixels = img;
+	printff("alloc img addr: 0x%016lx\n", i);
 	return i;
 }
 Image4 * makeImage4WithDataPtr(uint32_t width, uint32_t height, Pixel4 *pixels){
@@ -28,6 +31,7 @@ Image4 * makeImage4WithDataPtr(uint32_t width, uint32_t height, Pixel4 *pixels){
 	i -> width = width;
 	i -> height = height;
 	i -> pixels = pixels;
+	printff("alloc img addr: 0x%016lx\n", i);
 	return i;
 }
 Image3 * makeImage3(uint32_t width, uint32_t height){
@@ -36,6 +40,7 @@ Image3 * makeImage3(uint32_t width, uint32_t height){
 	i -> width = width;
 	i -> height = height;
 	i -> pixels = img;
+	printff("alloc img addr: 0x%016lx\n", i);
 	return i;
 }
 Image3 * makeImage3WithData(uint32_t width, uint32_t height, Pixel3 pixels[]){
@@ -46,6 +51,7 @@ Image3 * makeImage3WithData(uint32_t width, uint32_t height, Pixel3 pixels[]){
 	i -> width = width;
 	i -> height = height;
 	i -> pixels = img;
+	printff("alloc img addr: 0x%016lx\n", i);
 	return i;
 }
 

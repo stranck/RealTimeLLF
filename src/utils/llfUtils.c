@@ -54,9 +54,10 @@ void destroyFilter(Kernel *filter){
 	filter = NULL;
 }
 
-Pyramid createPyramid(uint32_t width, uint32_t height, uint8_t nLevels){ //Pyramids has one more layer!
+Pyramid createPyramid(uint32_t width, uint32_t height, uint8_t nLevels){
+	nLevels++; //Pyramids has one more layer!
 	Pyramid p = malloc(nLevels * sizeof(Image3*));
-	for(uint8_t i = 0; i <= nLevels; i++){
+	for(uint8_t i = 0; i < nLevels; i++){
 		p[i] = makeImage3(width, height);
 		width = width / 2 + (width & 1);
 		height = height / 2 + (height & 1);
@@ -65,8 +66,11 @@ Pyramid createPyramid(uint32_t width, uint32_t height, uint8_t nLevels){ //Pyram
 }
 void destroyPyramid(Pyramid *p, uint8_t nLevels){
 	Pyramid p_local = *p;
-	for(uint8_t i = 0; i <= nLevels; i++)
-		destroyImage(p_local[i]);
+	for(uint8_t i = 0; i <= nLevels; i++){
+		//printff("Destroying image %d / %d (Addr: 0x%016lx)\n", i, nLevels, p_local[i]);
+		destroyImage3(&p_local[i]);
+	}
+	print("Destroying pyramid obj");
 	free(p_local);
 	p = NULL;
 }
