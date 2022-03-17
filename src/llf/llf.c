@@ -103,7 +103,7 @@ void upsample(Image3 *dest, Image3 *source, Kernel filter, Image3 *buffer){
 	convolve(dest, buffer, filter);
 }
 void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
-	printff("Source addr: 0x%016lx    Pxs addr: 0x%016lx\n", source, source->pixels);
+	//printff("Source addr: 0x%016lx    Pxs addr: 0x%016lx\n", source, source->pixels);
 	uint32_t smallWidth = source->width, smallHeight = source->height;
 	uint32_t uppedW = smallWidth << 1;
 	uint32_t uppedH = smallHeight << 1;
@@ -187,8 +187,53 @@ void laplacianPyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Ker
 	imgcpy3(laplacian[nLevels], tempGauss[nLevels]);
 }
 
+/*
+//Pseudocode bc this shit keeps segfaulting
+void collapse(dest, pyramid, levels){
+	upsample(pyr[2], pyr[3], pyr[2]);
+	upsample(pyr[1], pyr[2], pyr[1]);
+	upsample(dest, pyr[1], pyr[0]);
+} 
+void collapse(dest, pyramid, levels){
+	upsample(pyr[2], pyr[3], pyr[2]);{
+		upsample(dest, pyr[3])
+		pyr[2] = dest + pyr[2]
+	}
+	upsample(pyr[1], pyr[2], pyr[1]);
+	upsample(dest, pyr[1], pyr[0]){
+		upsample(dest, pyr[1]);
+		dest = dest + pyr[0]
+	}
+} 
+ */
 void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter){
-	Image3 *result = laplacianPyr[nLevels];
+	Pixel3 *destPxs = dest->pixels;
+	for(int8_t lev = nLevels; lev > 1; lev--){ //Using dest as a temp buffer
+		printff("%d / 0\n", lev);	
+		Image3 *currentLevel = laplacianPyr[lev], *biggerLevel = laplacianPyr[lev - 1];
+		Pixel3 *biggerLevelPxs = biggerLevel->pixels;
+
+		upsampleConvolve(dest, currentLevel, filter);
+		print("Returned from upsample");
+		uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
+		for(uint32_t px = 0; px < sizeUpsampled; px++)
+			biggerLevelPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
+		biggerLevel->width = dest->width;
+		biggerLevel->height = dest->height; //This could cause disalignment problem
+	}
+	print("Out of collapse loop");
+	//We save one extra copy by doing the last collapse directly inside dest
+	Image3 *currentLevel = laplacianPyr[1], *biggerLevel = laplacianPyr[0];
+	Pixel3 *biggerLevelPxs = biggerLevel->pixels;
+
+	upsampleConvolve(dest, currentLevel, filter);
+	print("Returned from upsample");
+	uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
+	for(uint32_t px = 0; px < sizeUpsampled; px++)
+		destPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
+	print("Returning from collapse");
+
+	/*Image3 *result = laplacianPyr[nLevels];
 	Pixel3 *destPxs = dest->pixels, *psxUpsampled = result->pixels;
 	/*if(nLevels - 1 >= 0){ //We save one extra copy by using dest as a temp buffer
 		Image3 *pyr = laplacianPyr[nLevels - 1];
@@ -201,7 +246,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 			psxUpsampled[px] = vec3Add(psxPyr[px], psxUpsampled[px], Pixel3);
 		result->width = dest->width;
 		result->height = dest->height;
-	}*/
+	}*//*
 	printff("Remaining levels: %d\n", nLevels - 2);	
 	for(int8_t lev = nLevels - 1; lev >= 0; lev--){
 		//printff("#1 DEST    Source addr: 0x%016lx    Pxs addr: 0x%016lx\n", dest, dest->pixels);
@@ -221,7 +266,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 			psxUpsampled[px] = vec3Add(psxPyr[px], destPxs[px], Pixel3);
 		result->width = dest->width;
 		result->height = dest->height;
-	}
+	}*/
 
 }
 
