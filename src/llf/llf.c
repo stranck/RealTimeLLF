@@ -33,31 +33,38 @@ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t 
 	*height /= 2;
 	dest->width = *width;
 	dest->height = *height;
-	const uint32_t startingX = originalW & 1;
-	const uint32_t startingY = originalH & 1;
-	const uint8_t  rows = KERNEL_DIMENSION;
-	const uint8_t  cols = KERNEL_DIMENSION;
+	const int32_t startingX = originalW & 1;
+	const int32_t startingY = originalH & 1;
+	const int8_t  rows = KERNEL_DIMENSION;
+	const int8_t  cols = KERNEL_DIMENSION;
 	const int32_t  xstart = -1 * cols / 2;
 	const int32_t  ystart = -1 * rows / 2;
 	//printff("+++ Dest: %dx%d\t\t Allc: %dx%d\t\t Sorc: %dx%d\n", dest->width, dest->height, dest->allocatedW, dest->height, source->width, source->height);
 
+	/*for (uint32_t j = startingY; j < originalH; j += 2) {
+		for (uint32_t i = startingX; i < originalW; i += 2) {
+			Pixel3 c = zero3f;
+			for(uint32_t y = 0; y < rows; y++){
+				int32_t jy = (j + ystart + y) * 2;
+			}
+		}
+	}*/
+
+
 	for (uint32_t j = startingY; j < originalH; j += 2) {
 		for (uint32_t i = startingX; i < originalW; i += 2) {
 			Pixel3 c = zero3f;
-			
 			for (uint32_t y = 0; y < rows; y++) {
-
-                int32_t jy = (j + ystart + y) * 2 - startingY;
-				
+				int32_t jy = j + (ystart + y) * 2 - startingY;
 				for (uint32_t x = 0; x < cols; x++) {
+					int32_t ix = i + (xstart + x) * 2 - startingX;
+					//if(j == (166 * 2) && i == (148 * 2)) printff("PX pre: 0x%02x 0x%02x 0x%02x\n", roundfu8(255 * c.x), roundfu8(255 * c.y), roundfu8(255 * c.z));
 
-                    int32_t ix = (i + xstart + x) * 2  - startingX;
-
-                    if (ix >= 0 && ix < dest->width && jy >= 0 && jy < dest->height) {
+					if (ix >= 0 && ix < originalW && jy >= 0 && jy < originalH) {
 						
 						double kern_elem = filter[getKernelPosition(x, y)];
-						//printff("Getting pixel #1: %d ; %d (Org: %d ; %d) (xy:  %d ; %d) (startXY: %d ; %d)\n", ix, jy, ix + startingX, jy + startingY, x, y, xstart, ystart);
-						Pixel3 px = *getPixel3(source, ix - startingX, jy - startingY);
+						//if(j == (166 * 2) && i == (148 * 2)) printff("Getting pixel #1: %d ; %d (Org: %d ; %d) (xy:  %d ; %d) (startXY: %d ; %d)\n", ix, jy, ix + startingX, jy + startingY, x, y, xstart, ystart);
+						Pixel3 px = *getPixel3(source, ix, jy);
 
 						c.x += px.x * kern_elem;
 						c.y += px.y * kern_elem;
@@ -65,16 +72,18 @@ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t 
 					} else {
 						
 						double kern_elem = filter[getKernelPosition(x, y)];
-						//printff("Getting pixel #2: %d ; %d (Org: %d ; %d)\n", i - startingX, j - startingY, i, j);
+						//if(j == (166 * 2) && i == (148 * 2)) printff("Getting pixel #2: %d ; %d (Org: %d ; %d)\n", i - startingX, j - startingY, i, j);
 						Pixel3 px = *getPixel3(source, i - startingX, j - startingY);
 
 						c.x += px.x * kern_elem;
 						c.y += px.y * kern_elem;
 						c.z += px.z * kern_elem;
 					}
+					//if(j == (166 * 2) && i == (148 * 2)) printff("PX pst: 0x%02x 0x%02x 0x%02x\n", roundfu8(255 * c.x), roundfu8(255 * c.y), roundfu8(255 * c.z));
 				}
 			}
-			//printff("Setting pixel: %d ; %d (Org: %d ; %d)\n", i / 2, j / 2, i, j);
+			//if(getPixel3(dest, i / 2, j / 2)->y == 0) 
+			//if(j == (166 * 2) && i == (148 * 2)) printff("Setting pixel: %d ; %d (Org: %d ; %d)\n", i / 2, j / 2, i, j);
 			setPixel3(dest, i / 2, j / 2, &c);
 		}
 	}
@@ -113,18 +122,19 @@ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 	const uint8_t  cols = KERNEL_DIMENSION;
 	const int32_t  xstart = -1 * cols / 2;
 	const int32_t  ystart = -1 * rows / 2;
+	//printff("Small: %dx%d\t\t Big: %dx%d", uppedW, smallHeight, smallWidth, smallHeight);
 
-	for (uint32_t j = 0; j < uppedW; j++) {
-		for (uint32_t i = 0; i < uppedH; i++) {
+	for (uint32_t j = 0; j < uppedH; j++) {
+		for (uint32_t i = 0; i < uppedW; i++) {
 			Pixel3 c = zero3f;
 			for (uint32_t y = 0; y < rows; y++) {
-                int32_t jy = j + ystart + y;
+                int32_t jy = (j + ystart + y) / 2;
 				for (uint32_t x = 0; x < cols; x++) {
-                    int32_t ix = i + xstart + x;
-                    if (ix >= 0 && ix < uppedW && jy >= 0 && jy < uppedH) {
+                    int32_t ix = (i + xstart + x) / 2;
+                    if (ix >= 0 && ix < smallWidth && jy >= 0 && jy < smallHeight) {
 						double kern_elem = kernel[getKernelPosition(x, y)];
 						//printff("Getting pixel #1: %d ; %d (Org: %d ; %d) (xy:  %d ; %d) (startXY: %d ; %d)\n", ix / 2, jy / 2, ix, jy, x, y, xstart, ystart);
-						Pixel3 px = *getPixel3(source, ix / 2, jy / 2);
+						Pixel3 px = *getPixel3(source, ix, jy);
 
 						c.x += px.x * kern_elem;
 						c.y += px.y * kern_elem;
@@ -180,7 +190,13 @@ void laplacianPyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Ker
 				Pixel3 *upsPtr = getPixel3(upsampled, x, y);
 				Pixel3 ups = *upsPtr;
 				Pixel3 crr = *getPixel3(current, x, y);
+
+				//printff("RES: (%f %f %f)   CRR: (%f %f %f)   UPS: (%f %f %f)\n", (crr.x - upsPtr->x), (crr.y - upsPtr->y), (crr.z - upsPtr->z), crr.x, crr.y, crr.z, upsPtr->x, upsPtr->y, upsPtr->z);
+				//printff("RES: (0x%02x 0x%02x 0x%02x)   CRR: (0x%02x 0x%02x 0x%02x)   UPS: (0x%02x 0x%02x 0x%02x)\n", roundfu8(255 * (crr.x - upsPtr->x)), roundfu8(255 * (crr.y - upsPtr->y)), roundfu8(255 * (crr.z - upsPtr->z)), roundfu8(255 * crr.x), roundfu8(255 * crr.y), roundfu8(255 * crr.z), roundfu8(255 * upsPtr->x), roundfu8(255 * upsPtr->y), roundfu8(255 * upsPtr->z));
 				*upsPtr = vec3Sub(crr, ups, Pixel3);
+				//upsPtr->x = clamp(crr.x - upsPtr->x, 0, 1);
+				//upsPtr->y = clamp(crr.y - upsPtr->y, 0, 1);
+				//upsPtr->z = clamp(crr.z - upsPtr->z, 0, 1);
 			}
 		}
 	}
@@ -281,16 +297,18 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
 	Pyramid bufferLaplacianPyramid = createPyramid(width, height, nLevels);
 
 	gaussianPyramid(gaussPyramid, img, nLevels, filter);
-	imgcpy3(img, gaussPyramid[0]);
+	//imgcpy3(img, gaussPyramid[0]);
+	//return;
 	print("Testing convolve"); //upsampleConvolve(img, gaussPyramid[2], filter);
 	print("Entering loop");
 	for(uint8_t lev = 0; lev < nLevels; lev++){
+		printff("laplacian inner loop %d/%d\n", lev, (nLevels - 1));
 		Image3 *currentGaussLevel = gaussPyramid[lev];
 		uint32_t gaussianWidth = currentGaussLevel->width, gaussianHeight = currentGaussLevel->height;
 		uint32_t subregionDimension = 3 * ((1 << (lev + 2)) - 1) / 2;
 
 		for(uint32_t y = 0; y < gaussianHeight; y++){
-			printff("laplacian inner loop %d/%d\ty = %d/%d\n", lev, (nLevels - 1), y, gaussianHeight);
+			//printff("laplacian inner loop %d/%d\ty = %d/%d\n", lev, (nLevels - 1), y, gaussianHeight);
 
 			//no fuckin clues what this calcs are
 			int32_t full_res_y = (1 << lev) * y;
@@ -322,6 +340,7 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
 			}
 		}
 	}
+	imgcpy3(outputLaplacian[nLevels], gaussPyramid[nLevels]);
 	print("Exiting loop");
 	collapse(img, outputLaplacian, nLevels, filter);
 	
@@ -336,12 +355,36 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
 int main(){
 	print("\n\n\n  OUTPUT  \nvvvvvvvvvv");
 	Image4 *img4 = getStaticImage4();
+	//print("ASDDD");
+	//uint8_t buffer[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10};
+	//printBuffer(&buffer, sizeof(buffer));
+	//print("Done");
 	Image3 *img = image4to3(img4);
 	AlphaMap map = getAlphaMap(img4);
+
+	Pyramid bufferGaussPyramid = createPyramid(img->width, img->height, 3);
+	Pyramid bufferLaplacianPyramid = createPyramid(img->width, img->height, 3);
+
 	//destroyImage(img4);
 	llf(img, 0.35, 0.4, 5, 3);
+	//Kernel filter = createFilter();
+	//Image3 *cpy = makeImage3(img->width, img->height);
+	//Pixel3 px = {1, 0, 0};
+	//fillWithColor(bufferLaplacianPyramid[2], &px);
+	//Pixel3 px = {0x7f, 0x7f, 0x7f};
+	//remap(img, px, 0.35, 0.4, 5);
+	//gaussianPyramid(bufferGaussPyramid, img, 3, filter);
+	//laplacianPyramid(bufferLaplacianPyramid, bufferGaussPyramid, 3, filter);
+	//collapse(img, bufferLaplacianPyramid, 3, filter);
+
+	//imgcpy3(img, bufferLaplacianPyramid[2]);
+
+
+	//subimage3(img, cpy, 256, 396, 42, 212);
+	clampImage3(img);
 	img4 = image3to4AlphaMap(img, map);
 	//destroyImage(img);
-	printStaticImage4(img4);
+	//printff("%d x %d\n", img4->width, img4->height);
+	//printStaticImage4(img4);
 	//	destroyImage(img4);
 }
