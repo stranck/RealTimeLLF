@@ -49,6 +49,28 @@ Image3 * makeImage3WithData(uint32_t width, uint32_t height, Pixel3 pixels[]){
 	return i;
 }
 
+
+void destroyImage3(Image3 **img){
+	Image3 *localImg = *img;
+	printff("destr img addr: 0x%016lx    Pxs addr: 0x%016lx\n", localImg, localImg -> pixels);
+	free(localImg -> pixels);
+	//printff("    Pxs addr: 0x%016lx", localImg -> pixels);
+	localImg -> pixels = NULL;
+	free(localImg);
+	//print("");
+	*img = NULL;
+}
+void destroyImage4(Image4 **img){
+	Image4 *localImg = *img;
+	printff("destr img addr: 0x%016lx    Pxs addr: 0x%016lx\n", localImg, localImg -> pixels);
+	free(localImg -> pixels);
+	//printff("", );
+	localImg -> pixels = NULL;
+	free(localImg);
+	//print("");
+	*img = NULL;
+}
+
 AlphaMap getAlphaMap(Image4 *img){
 	uint32_t dimension = img->width * img->height;
 	AlphaMap map = malloc(dimension * sizeof(uint8_t));

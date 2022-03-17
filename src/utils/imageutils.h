@@ -8,6 +8,9 @@ Image4 * makeImage4WithDataPtr(uint32_t width, uint32_t height, Pixel4 *pixels);
 Image3 * makeImage3(uint32_t width, uint32_t height);
 Image3 * makeImage3WithData(uint32_t width, uint32_t height, Pixel3 pixels[]);
 
+void destroyImage3(Image3 **img);
+void destroyImage4(Image4 **img);
+
 inline Pixel4 * getPixel4(Image4 *img, uint32_t x, uint32_t y){
 	return &img->pixels[y * img->width + x];
 }
@@ -40,9 +43,3 @@ void imgcpy3(Image3 *dest, Image3 *source);
 void fillWithColor(Image3 *dest, Pixel3 *color);
 
 void clampImage3(Image3 *img);
-
-#define destroyImage(img) {\
-	free(img -> pixels); \
-	free(img); \
-	img = NULL; \
-};
