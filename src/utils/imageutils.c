@@ -85,7 +85,7 @@ Image4 * image3to4AlphaMap(Image3 *img, AlphaMap alphaMap){
 void imgcpy3(Image3 *dest, Image3 *source){
 	dest->width = source->width;
 	dest->height = source->height;
-	memcpy(dest->pixels, source->pixels, dest->width * dest->height);
+	memcpy(dest->pixels, source->pixels, dest->width * dest->height * sizeof(Pixel3));
 }
 
 void subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY){
