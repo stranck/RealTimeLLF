@@ -115,3 +115,13 @@ void fillWithColor(Image3 *dest, Pixel3 *color){
 	for(uint32_t i = 0; i < dim; i++)
 		pxs[i] = *color;
 }
+
+void clampImage3(Image3 *img){
+	uint32_t dim = img->width * img->height;
+	Pixel3 *px = img->pixels;
+	for(uint32_t i = 0; i < dim; i++){
+		px[i].x = clamp(px[i].x, 0, 1);
+		px[i].y = clamp(px[i].y, 0, 1);
+		px[i].z = clamp(px[i].z, 0, 1);
+	}
+}

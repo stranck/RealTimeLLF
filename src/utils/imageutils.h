@@ -39,6 +39,8 @@ void imgcpy3(Image3 *dest, Image3 *source);
 
 void fillWithColor(Image3 *dest, Pixel3 *color);
 
+void clampImage3(Image3 *img);
+
 #define destroyImage(img) {\
 	free(img -> pixels); \
 	free(img); \
