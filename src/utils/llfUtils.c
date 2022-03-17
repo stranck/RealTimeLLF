@@ -67,10 +67,8 @@ Pyramid createPyramid(uint32_t width, uint32_t height, uint8_t nLevels){
 void destroyPyramid(Pyramid *p, uint8_t nLevels){
 	Pyramid p_local = *p;
 	for(uint8_t i = 0; i <= nLevels; i++){
-		//printff("Destroying image %d / %d (Addr: 0x%016lx)\n", i, nLevels, p_local[i]);
 		destroyImage3(&p_local[i]);
 	}
-	print("Destroying pyramid obj");
 	free(p_local);
 	p = NULL;
 }

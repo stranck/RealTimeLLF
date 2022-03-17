@@ -22,7 +22,6 @@ Image4 * makeImage4WithData(uint32_t width, uint32_t height, Pixel4 pixels[]){
 	i -> width = width;
 	i -> height = height;
 	i -> pixels = img;
-	printff("alloc img addr: 0x%016lx\n", i);
 	return i;
 }
 Image4 * makeImage4WithDataPtr(uint32_t width, uint32_t height, Pixel4 *pixels){
@@ -31,7 +30,6 @@ Image4 * makeImage4WithDataPtr(uint32_t width, uint32_t height, Pixel4 *pixels){
 	i -> width = width;
 	i -> height = height;
 	i -> pixels = pixels;
-	printff("alloc img addr: 0x%016lx\n", i);
 	return i;
 }
 Image3 * makeImage3(uint32_t width, uint32_t height){
@@ -40,7 +38,6 @@ Image3 * makeImage3(uint32_t width, uint32_t height){
 	i -> width = width;
 	i -> height = height;
 	i -> pixels = img;
-	printff("alloc img addr: 0x%016lx\n", i);
 	return i;
 }
 Image3 * makeImage3WithData(uint32_t width, uint32_t height, Pixel3 pixels[]){
@@ -51,29 +48,22 @@ Image3 * makeImage3WithData(uint32_t width, uint32_t height, Pixel3 pixels[]){
 	i -> width = width;
 	i -> height = height;
 	i -> pixels = img;
-	printff("alloc img addr: 0x%016lx\n", i);
 	return i;
 }
 
 
 void destroyImage3(Image3 **img){
 	Image3 *localImg = *img;
-	printff("destr img addr: 0x%016lx    Pxs addr: 0x%016lx\n", localImg, localImg -> pixels);
 	free(localImg -> pixels);
-	//printff("    Pxs addr: 0x%016lx", localImg -> pixels);
 	localImg -> pixels = NULL;
 	free(localImg);
-	//print("");
 	*img = NULL;
 }
 void destroyImage4(Image4 **img){
 	Image4 *localImg = *img;
-	printff("destr img addr: 0x%016lx    Pxs addr: 0x%016lx\n", localImg, localImg -> pixels);
 	free(localImg -> pixels);
-	//printff("", );
 	localImg -> pixels = NULL;
 	free(localImg);
-	//print("");
 	*img = NULL;
 }
 
