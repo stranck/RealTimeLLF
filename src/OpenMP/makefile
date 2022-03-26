@@ -3,5 +3,5 @@ ARGS := -O3 -lm -g -fopenmp
 BINFOLDR := ../../bin/
 UTILS := ../utils/
 
-openmp : openmp.c $(UTILS)test.c
+openmp : openmp.c openmpExtra.c
 	$(GCC) $(ARGS) $^ -o $(BINFOLDR)$@
