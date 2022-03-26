@@ -5,7 +5,7 @@
 #include "../utils/vects.h"
 #include "../utils/utils.h"
 #include "openmpStructs.h"
-#include "openmpExtra.h"
+#include "openmpUtils.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <math.h>

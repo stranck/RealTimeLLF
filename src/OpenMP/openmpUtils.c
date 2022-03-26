@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 #include "openmpStructs.h"
-#include "openmpExtra.h"
+#include "openmpUtils.h"
 #include "../structs.h"
 
 
