@@ -118,12 +118,16 @@ void subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uin
 	uint32_t h = endY - startY;
 	dest->width = w;
 	dest->height = h;
+	//printff("%d    ,    %d\n", w, h);
+	//printff("%d    ,    %d\n", endY, startY);
+
 	for(uint32_t y = 0; y < h; y++){
 		uint32_t finalY = startY + y;
 		for(uint32_t x = 0; x < w; x++){
 			setPixel3(dest, x, y, getPixel3(source, startX + x, finalY));
 		}
 	}
+	//printff("Lo passa %d\n", 1);
 }
 
 void fillWithColor(Image3 *dest, Pixel3 *color){

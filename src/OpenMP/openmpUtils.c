@@ -2,7 +2,8 @@
 
 #include "openmpStructs.h"
 #include "openmpUtils.h"
-#include "../structs.h"
+#include "../utils/structs.h"
+
 
 
 void initLevelInfo(CurrentLevelInfo *cli, uint32_t *pyrDimensions, Pyramid gaussPyramid){

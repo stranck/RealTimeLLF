@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "../structs.h"
+#include "../utils/structs.h"
 #include "openmpStructs.h"
 
 void initLevelInfo(CurrentLevelInfo *cli, uint32_t *pyrDimensions, Pyramid gaussPyramid);

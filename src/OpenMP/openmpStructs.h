@@ -1,7 +1,8 @@
 #pragma once
 
 #include <stdint.h>
-#include "../structs.h"
+#include "../utils/structs.h"
+
 
 typedef struct {
 	Pyramid bufferGaussPyramid;
