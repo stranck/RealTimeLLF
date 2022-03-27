@@ -285,11 +285,14 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 	{
 		b = createBuffers(width, height, nLevels);
 		initLevelInfo(&cli, pyrDimensions, gaussPyramid);
+		cli.nextLevelDimension = omp_get_thread_num();
 	}
 
-	#pragma omp parallel for num_threads(nThreads)
+	#pragma omp parallel for num_threads(nThreads) schedule(dynamic)
 	for(uint32_t idx = 0; idx < end; idx++){
 		//printff(" \n Qui, %d\n", omp_get_thread_num());
+		printff("%d 	, %d, %d\n", cli.nextLevelDimension , cli.currentGaussLevel->width, cli.currentGaussLevel->height)
+
 
 		if(idx >= cli.nextLevelDimension) //Assuming ofc that idk only goes up for each thread
 			updateLevelInfo(&cli, pyrDimensions, gaussPyramid);
@@ -300,10 +303,11 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 		uint32_t gaussianWidth = cli.width;
 		uint32_t subregionDimension = 3 * ((1 << (lev + 2)) - 1) / 2;
 		uint32_t x = localIdx % gaussianWidth, y = localIdx / gaussianWidth;
-
+		
 		//no fuckin clues what this calcs are
 		int32_t full_res_y = (1 << lev) * y;
 		int32_t roi_y0 = full_res_y - subregionDimension;
+		
 		int32_t roi_y1 = full_res_y + subregionDimension + 1;
 		int32_t base_y = max(0, roi_y0);
 		int32_t end_y = min(roi_y1, height);
@@ -326,7 +330,8 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 		//printff(" \n Dopo Sub, %d\n", omp_get_thread_num());
 
 		remap(b.bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
-		//printff(" \n Dopo remap, %d\n", omp_get_thread_num());
+		printff(" \n%d Dopo remap, %d\n",idx, omp_get_thread_num());
+
 
 		uint8_t currentNLevels = lev + 1;
 		gaussianPyramid(b.bufferGaussPyramid, b.bufferLaplacianPyramid[0], currentNLevels, filter);
