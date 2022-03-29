@@ -57,7 +57,7 @@ void destroyFilter(Kernel *filter){
 Pyramid createPyramid(uint32_t width, uint32_t height, uint8_t nLevels){
 	nLevels++; //Pyramids has one more layer!
 	Pyramid p = malloc(nLevels * sizeof(Image3*));
-	for(uint8_t i = 0; i < nLevels; i++){
+	for(uint8_t i = 0; i <= nLevels; i++){
 		p[i] = makeImage3(width, height);
 		width = width / 2 + (width & 1);
 		height = height / 2 + (height & 1);

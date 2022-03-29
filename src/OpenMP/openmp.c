@@ -285,13 +285,14 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 	{
 		b = createBuffers(width, height, nLevels);
 		initLevelInfo(&cli, pyrDimensions, gaussPyramid);
-		cli.nextLevelDimension = omp_get_thread_num();
+		//cli.nextLevelDimension = omp_get_thread_num();
 	}
 
-	#pragma omp parallel for num_threads(nThreads) schedule(dynamic)
+	//#pragma omp parallel for num_threads(nThreads) schedule(dynamic)
 	for(uint32_t idx = 0; idx < end; idx++){
 		//printff(" \n Qui, %d\n", omp_get_thread_num());
-		printff("%d 	, %d, %d\n", cli.nextLevelDimension , cli.currentGaussLevel->width, cli.currentGaussLevel->height)
+		//printff("%d 	, %d, %d\n", cli.nextLevelDimension , cli.currentGaussLevel->width, cli.currentGaussLevel->height)
+		//printf("Larghezza : %d, Altezza : %d \n", outputLaplacian[3]->width, outputLaplacian[3]->height);
 
 
 		if(idx >= cli.nextLevelDimension) //Assuming ofc that idk only goes up for each thread
@@ -327,18 +328,23 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 		//printff(" \n Dopo Pixel , %d\n", omp_get_thread_num());
 
 		subimage3(b.bufferLaplacianPyramid[0], img, base_x, end_x, base_y, end_y); //Using b.bufferLaplacianPyramid[0] as temp buffer
-		//printff(" \n Dopo Sub, %d\n", omp_get_thread_num());
+		//printff(" Dopo Sub, %d\n", omp_get_thread_num());
 
 		remap(b.bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
-		printff(" \n%d Dopo remap, %d\n",idx, omp_get_thread_num());
+		//printff(" %d Dopo remap, %d\n",idx, omp_get_thread_num());
 
 
 		uint8_t currentNLevels = lev + 1;
 		gaussianPyramid(b.bufferGaussPyramid, b.bufferLaplacianPyramid[0], currentNLevels, filter);
 		laplacianPyramid(b.bufferLaplacianPyramid, b.bufferGaussPyramid, currentNLevels, filter);
 
+		//printff("%d Livello: %d x : %d, y : %d   \n",idx, lev, x, y);
+		//printff("Larghezza : %d, Altezza : %d \n", outputLaplacian[lev]->width, outputLaplacian[lev]->height);
 
 		setPixel3(outputLaplacian[lev], x, y, getPixel3(b.bufferLaplacianPyramid[lev], full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
+		//printff("Superato %d \n", idx);
+		//printff("Larghezza : %d, Altezza : %d \n", outputLaplacian[3]->width, outputLaplacian[3]->height);
+
 	}
 
 	imgcpy3_parallel(outputLaplacian[nLevels], gaussPyramid[nLevels], nThreads);
