@@ -19,7 +19,8 @@ void updateLevelInfo(CurrentLevelInfo *cli, uint32_t *pyrDimensions, Pyramid gau
 	cli -> currentGaussLevel = gaussPyramid[cli->lev];
 	cli -> width = cli->currentGaussLevel->width;
 	cli -> prevLevelDimension = cli->nextLevelDimension;
-	cli -> nextLevelDimension += pyrDimensions[cli->lev + 1];
+	cli -> nextLevelDimension += pyrDimensions[cli->lev];
+	//printff("Switching level to %d.\t Dim: %dx%d\t PrevDim: %d\t nextDim: %d\n", cli->lev, cli->width, cli->currentGaussLevel->height, cli->prevLevelDimension, cli->nextLevelDimension);
 }
 
 

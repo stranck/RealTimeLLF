@@ -7,6 +7,7 @@
 typedef struct {
 	Pyramid bufferGaussPyramid;
 	Pyramid bufferLaplacianPyramid;
+	int ompId;
 } Buffers;
 
 #define createBuffers(width, height, nLevels)({\

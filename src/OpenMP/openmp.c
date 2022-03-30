@@ -268,14 +268,15 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 	//uint32_t t = (0b100 << (nLevels * 2));
 	//uint32_t end = (img->width * img->height * ((t - 1) / 3)) / (t / 4); //sum[i=0, n] D / 4^i
 	uint32_t end = 0;
-	uint32_t pyrDimensions[nLevels + 2];
-	for(uint8_t i = 0; i <= nLevels; i++){
+	uint32_t pyrDimensions[nLevels + 1];
+	for(uint8_t i = 0; i < nLevels; i++){
 		Image3 *lev = gaussPyramid[i];
 		uint32_t dim = lev->width * lev->height;
 		pyrDimensions[i] = dim;
 		end += dim;
 	}
-	pyrDimensions[nLevels + 1] = end;
+	pyrDimensions[nLevels] = gaussPyramid[nLevels]->width * gaussPyramid[nLevels]->height;
+	for(uint8_t i = 0; i <= nLevels; i++){ printff("Lev %d => %d\n", i, pyrDimensions[i]); }
 
 	Buffers b;
 	#pragma omp private(b)
@@ -283,17 +284,20 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 	#pragma omp private(cli)
 	#pragma omp parallel num_threads(nThreads)
 	{
+		printff("[%d / ?] %d / %d \t - \t ", getThreadId(), 0, end);
 		b = createBuffers(width, height, nLevels);
 		initLevelInfo(&cli, pyrDimensions, gaussPyramid);
-		//cli.nextLevelDimension = omp_get_thread_num();
+		b.ompId = getThreadId();
 	}
 
 	#pragma omp parallel for num_threads(nThreads) schedule(dynamic)
 	for(uint32_t idx = 0; idx < end; idx++){
 
 
-		if(idx >= cli.nextLevelDimension) //Assuming ofc that idk only goes up for each thread
+		if(idx >= cli.nextLevelDimension){ //Assuming ofc that idk only goes up for each thread
+			printff("[%d / %d] %d / %d \t - \t ", getThreadId(), b.ompId, idx, end);
 			updateLevelInfo(&cli, pyrDimensions, gaussPyramid);
+		}
 		uint32_t localIdx = idx - cli.prevLevelDimension;
 
 		uint8_t lev = cli.lev;
