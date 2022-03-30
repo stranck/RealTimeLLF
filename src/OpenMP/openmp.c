@@ -144,7 +144,7 @@ void downsampleConvolve_parallel(Image3 *dest, Image3 *source, uint32_t *width, 
 	originalW -= startingX;
 	const uint32_t dim = (originalH - startingY * 2) * originalW; //not *2 on w because we need one extra pixel at the end of the line for the +=2 to work
 
-	#pragma omp parallel for num_threads(nThreads) schedule(static)
+	//#pragma omp parallel for num_threads(nThreads) schedule(static)
 	for(uint32_t idx = 0; idx < dim; idx += 2){
 		uint32_t i = (idx % originalW) + startingX, j = (idx / originalW) + startingY;
 
@@ -188,7 +188,7 @@ void upsampleConvolve_parallel(Image3 *dest, Image3 *source, Kernel kernel, cons
 	const int32_t  ystart = -1 * rows / 2;
 	const uint32_t dim = uppedH * uppedW;
 
-	#pragma omp parallel for num_threads(nThreads) schedule(static)
+	//#pragma omp parallel for num_threads(nThreads) schedule(static)
 	for (uint32_t idx = 0; idx < dim; idx++) {
 		uint32_t i = idx % uppedW, j = idx / uppedW;
 
@@ -236,7 +236,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 
 		upsampleConvolve_parallel(dest, currentLevel, filter, nThreads);
 		uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
-		#pragma omp parallel for num_threads(nThreads) schedule(static, 4)
+		//#pragma omp parallel for num_threads(nThreads) schedule(static, 4)
 		for(uint32_t px = 0; px < sizeUpsampled; px++)	
 			biggerLevelPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
 		biggerLevel->width = dest->width;
@@ -247,7 +247,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 
 	upsampleConvolve_parallel(dest, currentLevel, filter, nThreads);
 	uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
-	#pragma omp parallel for num_threads(nThreads) schedule(static, 4)
+	//#pragma omp parallel for num_threads(nThreads) schedule(static, 4)
 	for(uint32_t px = 0; px < sizeUpsampled; px++)
 		destPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
 }
@@ -281,18 +281,15 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 	#pragma omp private(b)
 	CurrentLevelInfo cli;
 	#pragma omp private(cli)
-	#pragma omp parallel num_threads(nThreads) //schedule(static)
+	#pragma omp parallel num_threads(nThreads)
 	{
 		b = createBuffers(width, height, nLevels);
 		initLevelInfo(&cli, pyrDimensions, gaussPyramid);
 		//cli.nextLevelDimension = omp_get_thread_num();
 	}
 
-	//#pragma omp parallel for num_threads(nThreads) schedule(dynamic)
+	#pragma omp parallel for num_threads(nThreads) schedule(dynamic)
 	for(uint32_t idx = 0; idx < end; idx++){
-		//printff(" \n Qui, %d\n", omp_get_thread_num());
-		//printff("%d 	, %d, %d\n", cli.nextLevelDimension , cli.currentGaussLevel->width, cli.currentGaussLevel->height)
-		//printf("Larghezza : %d, Altezza : %d \n", outputLaplacian[3]->width, outputLaplacian[3]->height);
 
 
 		if(idx >= cli.nextLevelDimension) //Assuming ofc that idk only goes up for each thread
@@ -322,29 +319,14 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 		int32_t end_x = min(roi_x1, width);
 		int32_t full_res_roi_x = full_res_x - base_x;
 
-		//printff(" \n Prima Pixel, %d\n", omp_get_thread_num());
-
 		Pixel3 g0 = *getPixel3(currentGaussLevel, x, y);
-		//printff(" \n Dopo Pixel , %d\n", omp_get_thread_num());
-
 		subimage3(b.bufferLaplacianPyramid[0], img, base_x, end_x, base_y, end_y); //Using b.bufferLaplacianPyramid[0] as temp buffer
-		//printff(" Dopo Sub, %d\n", omp_get_thread_num());
-
 		remap(b.bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
-		//printff(" %d Dopo remap, %d\n",idx, omp_get_thread_num());
-
-
 		uint8_t currentNLevels = lev + 1;
 		gaussianPyramid(b.bufferGaussPyramid, b.bufferLaplacianPyramid[0], currentNLevels, filter);
 		laplacianPyramid(b.bufferLaplacianPyramid, b.bufferGaussPyramid, currentNLevels, filter);
 
-		//printff("%d Livello: %d x : %d, y : %d   \n",idx, lev, x, y);
-		//printff("Larghezza : %d, Altezza : %d \n", outputLaplacian[lev]->width, outputLaplacian[lev]->height);
-
 		setPixel3(outputLaplacian[lev], x, y, getPixel3(b.bufferLaplacianPyramid[lev], full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
-		//printff("Superato %d \n", idx);
-		//printff("Larghezza : %d, Altezza : %d \n", outputLaplacian[3]->width, outputLaplacian[3]->height);
-
 	}
 
 	imgcpy3_parallel(outputLaplacian[nLevels], gaussPyramid[nLevels], nThreads);
