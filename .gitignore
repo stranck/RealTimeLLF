@@ -60,3 +60,6 @@ tmp/
 .vscode/
 src/utils/test/testimage.h
 null
+
+peda-session-openmp.txt
+.gdb_history
