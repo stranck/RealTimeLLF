@@ -284,10 +284,11 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 	#pragma omp private(cli)
 	#pragma omp parallel num_threads(nThreads)
 	{
-		printff("[%d / ?] %d / %d \t - \t ", getThreadId(), 0, end);
+		printf("[%d / ?] %d / %d \t - \t ", getThreadId(), 0, end);
 		b = createBuffers(width, height, nLevels);
 		initLevelInfo(&cli, pyrDimensions, gaussPyramid);
 		b.ompId = getThreadId();
+		fflush(stderr);
 	}
 
 	#pragma omp parallel for num_threads(nThreads) schedule(dynamic)
@@ -295,8 +296,9 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 
 
 		if(idx >= cli.nextLevelDimension){ //Assuming ofc that idk only goes up for each thread
-			printff("[%d / %d] %d / %d \t - \t ", getThreadId(), b.ompId, idx, end);
+			printf("[%d / %d] %d / %d \t - \t ", getThreadId(), b.ompId, idx, end);
 			updateLevelInfo(&cli, pyrDimensions, gaussPyramid);
+			fflush(stderr);
 		}
 		uint32_t localIdx = idx - cli.prevLevelDimension;
 
