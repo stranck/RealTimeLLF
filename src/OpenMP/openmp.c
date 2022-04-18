@@ -276,35 +276,38 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 		end += dim;
 	}
 	pyrDimensions[nLevels] = gaussPyramid[nLevels]->width * gaussPyramid[nLevels]->height;
-	for(uint8_t i = 0; i <= nLevels; i++){ printff("Lev %d => %d\n", i, pyrDimensions[i]); }
+	//for(uint8_t i = 0; i <= nLevels; i++){ printff("Lev %d => %d\n", i, pyrDimensions[i]); }
 
-	Buffers b;
-	#pragma omp private(b)
-	CurrentLevelInfo cli;
-	#pragma omp private(cli)
+	Buffers bArr[nThreads];
+	//#pragma omp private(b)
+	CurrentLevelInfo cliArr[nThreads];
+	//#pragma omp private(cli)
 	#pragma omp parallel num_threads(nThreads)
 	{
-		printf("[%d / ?] %d / %d \t - \t ", getThreadId(), 0, end);
-		b = createBuffers(width, height, nLevels);
-		initLevelInfo(&cli, pyrDimensions, gaussPyramid);
-		b.ompId = getThreadId();
-		fflush(stderr);
+		int threadId = getThreadId();
+		bArr[threadId] = createBuffers(width, height, nLevels);
+		bArr[threadId].ompId = getThreadId();
+		//printf("[%d / %d] %d / %d \t - \t ", getThreadId(), bArr[threadId].ompId, 0, end);
+		initLevelInfo(&(cliArr[threadId]), pyrDimensions, gaussPyramid);
+		//fflush(stderr);
 	}
 
 	#pragma omp parallel for num_threads(nThreads) schedule(dynamic)
 	for(uint32_t idx = 0; idx < end; idx++){
+		int threadId = getThreadId();
+		CurrentLevelInfo *cli = &(cliArr[threadId]);
+		Buffers *b = &(bArr[threadId]);
 
-
-		if(idx >= cli.nextLevelDimension){ //Assuming ofc that idk only goes up for each thread
-			printf("[%d / %d] %d / %d \t - \t ", getThreadId(), b.ompId, idx, end);
-			updateLevelInfo(&cli, pyrDimensions, gaussPyramid);
-			fflush(stderr);
+		if(idx >= cli->nextLevelDimension){ //Assuming ofc that idk only goes up for each thread
+			//printf("[%d / %d] %d / %d \t - \t ", getThreadId(), b->ompId, idx, end);
+			updateLevelInfo(cli, pyrDimensions, gaussPyramid);
+			//fflush(stderr);
 		}
-		uint32_t localIdx = idx - cli.prevLevelDimension;
+		uint32_t localIdx = idx - cli->prevLevelDimension;
 
-		uint8_t lev = cli.lev;
-		Image3 *currentGaussLevel = cli.currentGaussLevel;
-		uint32_t gaussianWidth = cli.width;
+		uint8_t lev = cli->lev;
+		Image3 *currentGaussLevel = cli->currentGaussLevel;
+		uint32_t gaussianWidth = cli->width;
 		uint32_t subregionDimension = 3 * ((1 << (lev + 2)) - 1) / 2;
 		uint32_t x = localIdx % gaussianWidth, y = localIdx / gaussianWidth;
 		
@@ -326,13 +329,13 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 		int32_t full_res_roi_x = full_res_x - base_x;
 
 		Pixel3 g0 = *getPixel3(currentGaussLevel, x, y);
-		subimage3(b.bufferLaplacianPyramid[0], img, base_x, end_x, base_y, end_y); //Using b.bufferLaplacianPyramid[0] as temp buffer
-		remap(b.bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
+		subimage3(b->bufferLaplacianPyramid[0], img, base_x, end_x, base_y, end_y); //Using b.bufferLaplacianPyramid[0] as temp buffer
+		remap(b->bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
 		uint8_t currentNLevels = lev + 1;
-		gaussianPyramid(b.bufferGaussPyramid, b.bufferLaplacianPyramid[0], currentNLevels, filter);
-		laplacianPyramid(b.bufferLaplacianPyramid, b.bufferGaussPyramid, currentNLevels, filter);
+		gaussianPyramid(b->bufferGaussPyramid, b->bufferLaplacianPyramid[0], currentNLevels, filter);
+		laplacianPyramid(b->bufferLaplacianPyramid, b->bufferGaussPyramid, currentNLevels, filter);
 
-		setPixel3(outputLaplacian[lev], x, y, getPixel3(b.bufferLaplacianPyramid[lev], full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
+		setPixel3(outputLaplacian[lev], x, y, getPixel3(b->bufferLaplacianPyramid[lev], full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
 	}
 
 	imgcpy3_parallel(outputLaplacian[nLevels], gaussPyramid[nLevels], nThreads);
@@ -341,8 +344,10 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 	
 	destroyPyramid(&gaussPyramid, nLevels);
 	destroyPyramid(&outputLaplacian, nLevels);
-	destroyPyramid(&b.bufferGaussPyramid, nLevels);
-	destroyPyramid(&b.bufferLaplacianPyramid, nLevels);
+	for(uint8_t i = 0; i < nThreads; i++){
+		destroyPyramid(&(bArr[i].bufferGaussPyramid), nLevels);
+		destroyPyramid(&(bArr[i].bufferLaplacianPyramid), nLevels);
+	}
 	destroyFilter(&filter);
 }
 
@@ -352,7 +357,7 @@ int main(){
 	AlphaMap map = getAlphaMap(img4);
 	destroyImage4(&img4);
 
-	llf(img, 0.35, 0.4, 5, 3, 4);
+	llf(img, 0.35, 0.4, 5, 3, 24);
 
 	clampImage3(img);
 	img4 = image3to4AlphaMap(img, map);
