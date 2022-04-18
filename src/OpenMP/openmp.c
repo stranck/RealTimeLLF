@@ -8,6 +8,7 @@
 #include "openmpUtils.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <math.h>
 #include <omp.h>
 
@@ -294,7 +295,7 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 	{
 		int threadId = getThreadId();
 		bArr[threadId] = createBuffers(width, height, nLevels);
-		bArr[threadId].ompId = getThreadId();
+		//bArr[threadId].ompId = getThreadId();
 		//printf("[%d / %d] %d / %d \t - \t ", getThreadId(), bArr[threadId].ompId, 0, end);
 		initLevelInfo(&(cliArr[threadId]), pyrDimensions, gaussPyramid);
 		//fflush(stderr);
@@ -317,40 +318,42 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 		uint8_t lev = cli->lev;
 		Image3 *currentGaussLevel = cli->currentGaussLevel;
 		uint32_t gaussianWidth = cli->width;
-		uint32_t subregionDimension = 3 * ((1 << (lev + 2)) - 1) / 2;
+		uint32_t subregionDimension = cli->subregionDimension;
 		uint32_t x = localIdx % gaussianWidth, y = localIdx / gaussianWidth;
+		//printff("X: %d, Y: %d\n", x, y);
 		
 		//no fuckin clues what this calcs are
-		int32_t full_res_y = (1 << lev) * y;
-		int32_t roi_y0 = full_res_y - subregionDimension;
-		
-		int32_t roi_y1 = full_res_y + subregionDimension + 1;
-		int32_t base_y = max(0, roi_y0);
-		int32_t end_y = min(roi_y1, height);
-		int32_t full_res_roi_y = full_res_y - base_y;
-		int32_t full_res_roi_yShifted = full_res_roi_y >> lev;
+		if(y != cli->oldY){
+			uint32_t full_res_y = (1 << lev) * y;
+			//int32_t roi_y0 = full_res_y - subregionDimension;
+			uint32_t roi_y1 = full_res_y + subregionDimension + 1;
+			cli->base_y = subregionDimension > full_res_y ? 0 : full_res_y - subregionDimension; //max(0, roi_y0);
+			cli->end_y = min(roi_y1, height);
+			uint32_t full_res_roi_y = full_res_y - cli->base_y;
+			cli->full_res_roi_yShifted = full_res_roi_y >> lev;
+			cli->oldY = y;
+		}
 
-		int32_t full_res_x = (1 << lev) * x;
-		int32_t roi_x0 = full_res_x - subregionDimension;
-		int32_t roi_x1 = full_res_x + subregionDimension + 1;
-		int32_t base_x = max(0, roi_x0);
-		int32_t end_x = min(roi_x1, width);
-		int32_t full_res_roi_x = full_res_x - base_x;
+		uint32_t full_res_x = (1 << lev) * x;
+		//int32_t roi_x0 = full_res_x - subregionDimension;
+		uint32_t roi_x1 = full_res_x + subregionDimension + 1;
+		uint32_t base_x = subregionDimension > full_res_x ? 0 : full_res_x - subregionDimension; //max(0, roi_x0);
+		uint32_t end_x = min(roi_x1, width);
+		uint32_t full_res_roi_x = full_res_x - base_x;
 
 		Pixel3 g0 = *getPixel3(currentGaussLevel, x, y);
-		subimage3(b->bufferLaplacianPyramid[0], img, base_x, end_x, base_y, end_y); //Using b.bufferLaplacianPyramid[0] as temp buffer
+		subimage3(b->bufferLaplacianPyramid[0], img, base_x, end_x, cli->base_y, cli->end_y); //Using b.bufferLaplacianPyramid[0] as temp buffer
 		remap(b->bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
-		uint8_t currentNLevels = lev + 1;
+		uint8_t currentNLevels = cli->currentNLevels;
 		gaussianPyramid(b->bufferGaussPyramid, b->bufferLaplacianPyramid[0], currentNLevels, filter);
 		laplacianPyramid(b->bufferLaplacianPyramid, b->bufferGaussPyramid, currentNLevels, filter);
 
-		setPixel3(outputLaplacian[lev], x, y, getPixel3(b->bufferLaplacianPyramid[lev], full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
+		setPixel3(outputLaplacian[lev], x, y, getPixel3(b->bufferLaplacianPyramid[lev], full_res_roi_x >> lev, cli->full_res_roi_yShifted)); //idk why i had to shift those
 	}
 
 	imgcpy3_parallel(outputLaplacian[nLevels], gaussPyramid[nLevels], nThreads);
 	print("Collapsing");
 	collapse(img, outputLaplacian, nLevels, filter, nThreads);
-	
 	gettimeofday(&stop, NULL);
 	passed += (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
 	passed /= 1000;
