@@ -11,6 +11,8 @@
 #include <math.h>
 #include <omp.h>
 
+#include <sys/time.h>
+
 #include "../utils/test/testimage.h"
 
 void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter){
@@ -261,8 +263,14 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 	Pyramid gaussPyramid = createPyramid(width, height, nLevels);
 	Pyramid outputLaplacian = createPyramid(width, height, nLevels);
 
+	struct timeval start, stop;
+	uint64_t passed = 0;
+
 	print("Creating first gauss pyramid");
+	gettimeofday(&start, NULL);
 	gaussianPyramid_parallel(gaussPyramid, img, nLevels, filter, nThreads);
+	gettimeofday(&stop, NULL);
+	passed = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
 	print("Entering main loop");
 	// Sadly, due to approxxximation in the downsample function, I can't use sum to calculate the pyramid dimension :(
 	//uint32_t t = (0b100 << (nLevels * 2));
@@ -292,6 +300,7 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 		//fflush(stderr);
 	}
 
+	gettimeofday(&start, NULL);
 	#pragma omp parallel for num_threads(nThreads) schedule(dynamic)
 	for(uint32_t idx = 0; idx < end; idx++){
 		int threadId = getThreadId();
@@ -342,6 +351,11 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 	print("Collapsing");
 	collapse(img, outputLaplacian, nLevels, filter, nThreads);
 	
+	gettimeofday(&stop, NULL);
+	passed += (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+	passed /= 1000;
+	printff("Total time: %lu\n", passed);
+
 	destroyPyramid(&gaussPyramid, nLevels);
 	destroyPyramid(&outputLaplacian, nLevels);
 	for(uint8_t i = 0; i < nThreads; i++){
