@@ -7,5 +7,7 @@ fi
 
 make $1
 mkdir tmp
+rm tmp/testStaticIO.out.txt
+rm tmp/testStaticIO.out.png
 bin/$1 > tmp/testStaticIO.out.txt
 python3 scripts/staticImageConvertT2I.py tmp/testStaticIO.out.txt tmp/testStaticIO.out.png

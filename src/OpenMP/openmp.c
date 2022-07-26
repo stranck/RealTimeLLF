@@ -147,7 +147,7 @@ void downsampleConvolve_parallel(Image3 *dest, Image3 *source, uint32_t *width, 
 	originalW -= startingX;
 	const uint32_t dim = (originalH - startingY * 2) * originalW; //not *2 on w because we need one extra pixel at the end of the line for the +=2 to work
 
-	//#pragma omp parallel for num_threads(nThreads) schedule(static)
+	#pragma omp parallel for num_threads(nThreads) schedule(static)
 	for(uint32_t idx = 0; idx < dim; idx += 2){
 		uint32_t i = (idx % originalW) + startingX, j = (idx / originalW) + startingY;
 
@@ -191,7 +191,7 @@ void upsampleConvolve_parallel(Image3 *dest, Image3 *source, Kernel kernel, cons
 	const int32_t  ystart = -1 * rows / 2;
 	const uint32_t dim = uppedH * uppedW;
 
-	//#pragma omp parallel for num_threads(nThreads) schedule(static)
+	#pragma omp parallel for num_threads(nThreads) schedule(static)
 	for (uint32_t idx = 0; idx < dim; idx++) {
 		uint32_t i = idx % uppedW, j = idx / uppedW;
 
@@ -239,7 +239,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 
 		upsampleConvolve_parallel(dest, currentLevel, filter, nThreads);
 		uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
-		//#pragma omp parallel for num_threads(nThreads) schedule(static, 4)
+		#pragma omp parallel for num_threads(nThreads) schedule(static, 8)
 		for(uint32_t px = 0; px < sizeUpsampled; px++)	
 			biggerLevelPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
 		biggerLevel->width = dest->width;
@@ -250,7 +250,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 
 	upsampleConvolve_parallel(dest, currentLevel, filter, nThreads);
 	uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
-	//#pragma omp parallel for num_threads(nThreads) schedule(static, 4)
+	#pragma omp parallel for num_threads(nThreads) schedule(static, 8)
 	for(uint32_t px = 0; px < sizeUpsampled; px++)
 		destPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
 }
@@ -287,9 +287,7 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 	pyrDimensions[nLevels] = gaussPyramid[nLevels]->width * gaussPyramid[nLevels]->height;
 
 	Buffers bArr[nThreads];
-	//#pragma omp private(b)
 	CurrentLevelInfo cliArr[nThreads];
-	//#pragma omp private(cli)
 	#pragma omp parallel num_threads(nThreads)
 	{
 		int threadId = getThreadId();
