@@ -285,7 +285,6 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 		end += dim;
 	}
 	pyrDimensions[nLevels] = gaussPyramid[nLevels]->width * gaussPyramid[nLevels]->height;
-	//for(uint8_t i = 0; i <= nLevels; i++){ printff("Lev %d => %d\n", i, pyrDimensions[i]); }
 
 	Buffers bArr[nThreads];
 	//#pragma omp private(b)
@@ -295,10 +294,7 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 	{
 		int threadId = getThreadId();
 		bArr[threadId] = createBuffers(width, height, nLevels);
-		//bArr[threadId].ompId = getThreadId();
-		//printf("[%d / %d] %d / %d \t - \t ", getThreadId(), bArr[threadId].ompId, 0, end);
 		initLevelInfo(&(cliArr[threadId]), pyrDimensions, gaussPyramid);
-		//fflush(stderr);
 	}
 
 	gettimeofday(&start, NULL);
@@ -308,11 +304,8 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 		CurrentLevelInfo *cli = &(cliArr[threadId]);
 		Buffers *b = &(bArr[threadId]);
 
-		if(idx >= cli->nextLevelDimension){ //Assuming ofc that idk only goes up for each thread
-			//printf("[%d / %d] %d / %d \t - \t ", getThreadId(), b->ompId, idx, end);
+		if(idx >= cli->nextLevelDimension) //Assuming ofc that idk only goes up for each thread
 			updateLevelInfo(cli, pyrDimensions, gaussPyramid);
-			//fflush(stderr);
-		}
 		uint32_t localIdx = idx - cli->prevLevelDimension;
 
 		uint8_t lev = cli->lev;
@@ -320,14 +313,12 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 		uint32_t gaussianWidth = cli->width;
 		uint32_t subregionDimension = cli->subregionDimension;
 		uint32_t x = localIdx % gaussianWidth, y = localIdx / gaussianWidth;
-		//printff("X: %d, Y: %d\n", x, y);
 		
 		//no fuckin clues what this calcs are
 		if(y != cli->oldY){
 			uint32_t full_res_y = (1 << lev) * y;
-			//int32_t roi_y0 = full_res_y - subregionDimension;
 			uint32_t roi_y1 = full_res_y + subregionDimension + 1;
-			cli->base_y = subregionDimension > full_res_y ? 0 : full_res_y - subregionDimension; //max(0, roi_y0);
+			cli->base_y = subregionDimension > full_res_y ? 0 : full_res_y - subregionDimension;
 			cli->end_y = min(roi_y1, height);
 			uint32_t full_res_roi_y = full_res_y - cli->base_y;
 			cli->full_res_roi_yShifted = full_res_roi_y >> lev;
@@ -335,9 +326,8 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 		}
 
 		uint32_t full_res_x = (1 << lev) * x;
-		//int32_t roi_x0 = full_res_x - subregionDimension;
 		uint32_t roi_x1 = full_res_x + subregionDimension + 1;
-		uint32_t base_x = subregionDimension > full_res_x ? 0 : full_res_x - subregionDimension; //max(0, roi_x0);
+		uint32_t base_x = subregionDimension > full_res_x ? 0 : full_res_x - subregionDimension;
 		uint32_t end_x = min(roi_x1, width);
 		uint32_t full_res_roi_x = full_res_x - base_x;
 
