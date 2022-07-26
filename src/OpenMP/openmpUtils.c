@@ -18,7 +18,9 @@ void initLevelInfo(CurrentLevelInfo *cli, uint32_t *pyrDimensions, Pyramid gauss
 void updateLevelInfo(CurrentLevelInfo *cli, uint32_t *pyrDimensions, Pyramid gaussPyramid){
 	cli -> lev++;
 	cli -> currentNLevels = cli->lev + 1;
+	cli -> shiftedLev = 1 << cli -> shiftedLev;
 	cli -> subregionDimension = 3 * ((1 << (cli->lev + 2)) - 1) / 2;
+	cli -> subregionDimensionPlus1 = cli->subregionDimension + 1;
 	cli -> currentGaussLevel = gaussPyramid[cli->lev];
 	cli -> width = cli->currentGaussLevel->width;
 	cli -> prevLevelDimension = cli->nextLevelDimension;

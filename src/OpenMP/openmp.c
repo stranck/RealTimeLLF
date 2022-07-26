@@ -324,9 +324,9 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 		
 		//no fuckin clues what this calcs are
 		if(y != cli->oldY){
-			uint32_t full_res_y = (1 << lev) * y;
+			uint32_t full_res_y = cli->shiftedLev * y;
 			//int32_t roi_y0 = full_res_y - subregionDimension;
-			uint32_t roi_y1 = full_res_y + subregionDimension + 1;
+			uint32_t roi_y1 = full_res_y + cli->subregionDimensionPlus1;
 			cli->base_y = subregionDimension > full_res_y ? 0 : full_res_y - subregionDimension; //max(0, roi_y0);
 			cli->end_y = min(roi_y1, height);
 			uint32_t full_res_roi_y = full_res_y - cli->base_y;
@@ -334,9 +334,9 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 			cli->oldY = y;
 		}
 
-		uint32_t full_res_x = (1 << lev) * x;
+		uint32_t full_res_x = cli->shiftedLev * x;
 		//int32_t roi_x0 = full_res_x - subregionDimension;
-		uint32_t roi_x1 = full_res_x + subregionDimension + 1;
+		uint32_t roi_x1 = full_res_x + cli->subregionDimensionPlus1;
 		uint32_t base_x = subregionDimension > full_res_x ? 0 : full_res_x - subregionDimension; //max(0, roi_x0);
 		uint32_t end_x = min(roi_x1, width);
 		uint32_t full_res_roi_x = full_res_x - base_x;
