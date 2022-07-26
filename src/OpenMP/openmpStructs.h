@@ -25,9 +25,7 @@ typedef struct {
 	uint32_t prevLevelDimension;
 	uint32_t nextLevelDimension;
 	uint32_t subregionDimension;
-	uint32_t subregionDimensionPlus1;
 	uint32_t full_res_roi_yShifted;
-	uint32_t shiftedLev;
 	uint32_t base_y;
 	uint32_t end_y;
 	Image3 *currentGaussLevel;

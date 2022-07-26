@@ -1,5 +1,5 @@
 GCC := gcc
-ARGS := -O1 -lm -g -ggdb -fopenmp
+ARGS := -O3 -lm -g -ggdb -fopenmp
 LINKER_ARGS := -lm
 BINFOLDR := ../../bin/
 UTILS := ../utils/
