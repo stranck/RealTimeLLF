@@ -40,7 +40,7 @@ void remap(Image3 * img, const Pixel3 g0, double sigma, double alpha, double bet
 
 Kernel createFilter(){
 	const double params[KERNEL_DIMENSION] = {0.05, 0.25, 0.4, 0.25, 0.05};
-	Kernel filter = malloc(KERNEL_DIMENSION * KERNEL_DIMENSION * sizeof(double));
+	Kernel filter = (Kernel) malloc(KERNEL_DIMENSION * KERNEL_DIMENSION * sizeof(double));
 
 	for(uint8_t i = 0; i < KERNEL_DIMENSION; i++){
 		for(uint8_t j = 0; j < KERNEL_DIMENSION; j++){
@@ -56,7 +56,7 @@ void destroyFilter(Kernel *filter){
 
 Pyramid createPyramid(uint32_t width, uint32_t height, uint8_t nLevels){
 	nLevels++; //Pyramids has one more layer!
-	Pyramid p = malloc(nLevels * sizeof(Image3*));
+	Pyramid p = (Pyramid) malloc(nLevels * sizeof(Image3*));
 	for(uint8_t i = 0; i < nLevels; i++){
 		p[i] = makeImage3(width, height);
 		width = width / 2 + (width & 1);

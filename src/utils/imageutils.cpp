@@ -7,8 +7,8 @@
 #include <string.h>
 
 Image4 * makeImage4(uint32_t width, uint32_t height){
-	Pixel4 *img = malloc(width * height * sizeof(Pixel4));
-	Image4 *i = malloc(sizeof(Image4));
+	Pixel4 *img = (Pixel4 *) malloc(width * height * sizeof(Pixel4));
+	Image4 *i = (Image4 *) malloc(sizeof(Image4));
 	i -> width = width;
 	i -> height = height;
 	i -> pixels = img;
@@ -16,9 +16,9 @@ Image4 * makeImage4(uint32_t width, uint32_t height){
 }
 Image4 * makeImage4WithData(uint32_t width, uint32_t height, Pixel4 pixels[]){
 	size_t dimension = width * height * sizeof(Pixel4);
-	Pixel4 *img = malloc(dimension);
+	Pixel4 *img = (Pixel4 *) malloc(dimension);
 	memcpy(img, pixels, dimension);
-	Image4 *i = malloc(sizeof(Image4));
+	Image4 *i = (Image4 *) malloc(sizeof(Image4));
 	i -> width = width;
 	i -> height = height;
 	i -> pixels = img;
@@ -26,15 +26,15 @@ Image4 * makeImage4WithData(uint32_t width, uint32_t height, Pixel4 pixels[]){
 }
 Image4 * makeImage4WithDataPtr(uint32_t width, uint32_t height, Pixel4 *pixels){
 	size_t dimension = width * height * sizeof(Pixel4);
-	Image4 *i = malloc(sizeof(Image4));
+	Image4 *i = (Image4 *) malloc(sizeof(Image4));
 	i -> width = width;
 	i -> height = height;
 	i -> pixels = pixels;
 	return i;
 }
 Image3 * makeImage3(uint32_t width, uint32_t height){
-	Pixel3 *img = malloc(width * height * sizeof(Pixel3));
-	Image3 *i = malloc(sizeof(Image3));
+	Pixel3 *img = (Pixel3 *) malloc(width * height * sizeof(Pixel3));
+	Image3 *i = (Image3 *) malloc(sizeof(Image3));
 	i -> width = width;
 	i -> height = height;
 	i -> pixels = img;
@@ -42,9 +42,9 @@ Image3 * makeImage3(uint32_t width, uint32_t height){
 }
 Image3 * makeImage3WithData(uint32_t width, uint32_t height, Pixel3 pixels[]){
 	size_t dimension = width * height * sizeof(Pixel3);
-	Pixel3 *img = malloc(dimension);
+	Pixel3 *img = (Pixel3 *) malloc(dimension);
 	memcpy(img, pixels, dimension);
-	Image3 *i = malloc(sizeof(Image3));
+	Image3 *i = (Image3 *) malloc(sizeof(Image3));
 	i -> width = width;
 	i -> height = height;
 	i -> pixels = img;
@@ -69,7 +69,7 @@ void destroyImage4(Image4 **img){
 
 AlphaMap getAlphaMap(Image4 *img){
 	uint32_t dimension = img->width * img->height;
-	AlphaMap map = malloc(dimension * sizeof(uint8_t));
+	AlphaMap map = (AlphaMap) malloc(dimension * sizeof(uint8_t));
 	for(uint32_t i = 0; i < dimension; i++)
 		map[i] = img->pixels[i].w;
 	return map;
