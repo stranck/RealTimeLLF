@@ -345,7 +345,7 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 	gettimeofday(&stop, NULL);
 	passed += (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
 	passed /= 1000;
-	printff("Total time: %lu\n", passed);
+	printff("Total time: %lums\n", passed);
 
 	destroyPyramid(&gaussPyramid, nLevels);
 	destroyPyramid(&outputLaplacian, nLevels);
@@ -356,6 +356,13 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, 
 	destroyFilter(&filter);
 }
 
+/*
+.\bin\ycolorgrade --image tests/flower.png --llf --levels 3 --sigma 0.35 --alpha 0.4 --beta 5
+Yocto single core: 21213ms 
+Yocto multicore: 1906ms
+This single core: 11707ms
+This multi core: 836ms
+*/
 int main(){
 	Image4 *img4 = getStaticImage4();
 	Image3 *img = image4to3(img4);

@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <math.h>
 
+#include <sys/time.h>
+
 #include "../utils/test/testimage.h"
 
 void downsample(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter, Image3 *buffer){
@@ -196,9 +198,16 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
 	Pyramid bufferGaussPyramid = createPyramid(width, height, nLevels);
 	Pyramid bufferLaplacianPyramid = createPyramid(width, height, nLevels);
 
+	struct timeval start, stop;
+	uint64_t passed = 0;
+
 	print("Creating first gauss pyramid");
+	gettimeofday(&start, NULL);
 	gaussianPyramid(gaussPyramid, img, nLevels, filter);
+	gettimeofday(&stop, NULL);
+	passed = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
 	print("Entering main loop");
+	gettimeofday(&start, NULL);
 	for(uint8_t lev = 0; lev < nLevels; lev++){
 		printff("laplacian inner loop %d/%d\n", lev, (nLevels - 1));
 		Image3 *currentGaussLevel = gaussPyramid[lev];
@@ -239,6 +248,10 @@ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
 	imgcpy3(outputLaplacian[nLevels], gaussPyramid[nLevels]);
 	print("Collapsing");
 	collapse(img, outputLaplacian, nLevels, filter);
+	gettimeofday(&stop, NULL);
+	passed += (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+	passed /= 1000;
+	printff("Total time: %lums\n", passed);
 	
 	destroyPyramid(&gaussPyramid, nLevels);
 	destroyPyramid(&outputLaplacian, nLevels);
