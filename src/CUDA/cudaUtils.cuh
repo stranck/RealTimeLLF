@@ -6,6 +6,20 @@
 #ifdef CUDA_INCLUDE
 	#include <cuda.h>
 	#include <cuda_runtime.h>
+#else
+    //Shitty hack to remove the errors from vscode even if it doesn't detect my CUDA installation
+    #define __global__
+    #define __shared__
+	#define __device__
+    #define cudaError_t int
+    #define cudaMemcpyHostToDevice 1
+    #define cudaSuccess 0
+    #define cudaMalloc(a, b)({int disajiodjsao = 0; disajiodjsao;})
+    #define cudaMemcpy(a, b, c, d)({int dkosapkogkg = 0; dkosapkogkg;})
+    #define cudaGetErrorString(e)({"asd";})
+    #define __syncthreads(){}
+    #define blockDim zero3i32
+    #define threadIdx zero3i32
 #endif
 
 

@@ -1,4 +1,4 @@
-#define CUDA_INCLUDE //had to do this to fix vs code intellisense doing random stuff
+//#define CUDA_INCLUDE //had to do this to fix vs code intellisense doing random stuff
 
 #define MAX_LAYERS 5
 #define MAX_PYR_LAYER 3 * ((1 << (MAX_LAYERS + 2)) - 1)
