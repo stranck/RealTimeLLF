@@ -38,6 +38,7 @@
 
 __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 	__shared__ Pixel3 ds_upsampled[MAX_PYR_LAYER * MAX_PYR_LAYER];
+	//__shared__ double lcl_kernel[KERNEL_DIMENSION * KERNEL_DIMENSION];
 	
 	uint32_t smallWidth = source->width, smallHeight = source->height;
 	uint32_t uppedW = smallWidth << 1;
@@ -63,9 +64,17 @@ __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 	}
 	__syncthreads();
 
+	/*dim = KERNEL_DIMENSION * KERNEL_DIMENSION;
+	max = dim / blockDim.x;
+	for(uint32_t i = 0; i <= max; i++){
+		uint32_t idx = i * blockDim.x + threadIdx.x;
+		if(idx < dim)
+			lcl_kernel[idx] = kernel[idx];
+	}
+	__syncthreads();*/
+
 	dim = uppedW * uppedH;
 	max = dim / blockDim.x;
-
 	//for (uint32_t j = 0; j < uppedH; j++) {
 	//	for (uint32_t i = 0; i < uppedW; i++) {
 	for(uint32_t li = 0; li <= max; li++){
@@ -183,6 +192,85 @@ __global__ void gaussianPyramid(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLeve
 	//}
 	for(uint8_t i = 1; i < nLevels; i++)
 		downsampleConvolve(d_outPyr[i + 1], d_outPyr[i], &width, &height, d_filter);
+	//No extra synchtreads needed because there already is one at the end of downsampleConvolve 
+}
+
+__device__ void laplacianPyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Kernel filter){
+	for(uint8_t i = 0; i < nLevels; i++){
+		Image3 *upsampled = laplacian[i];
+		upsampleConvolve(upsampled, tempGauss[i + 1], filter);
+		//No extra synchtreads needed because there already is one at the end of upsampleConvolve 
+
+		Image3 *current = tempGauss[i];
+		//TODO Check if min macro works fine for cuda
+		uint32_t yEnd = min(current->height, upsampled->height);
+		uint32_t xEnd = min(current->width, upsampled->width);
+		uint32_t dim = xEnd * yEnd;
+		uint32_t max = dim / blockDim.x;
+		//for (uint32_t y = 0; y < yEnd; y++){
+		//	for (uint32_t x = 0; x < xEnd; x++){
+		for(uint32_t li = 0; li <= max; li++){
+			uint32_t idx = li * blockDim.x + threadIdx.x;
+			if(idx < dim){
+				uint32_t x = idx % xEnd, y = idx / xEnd;
+
+				Pixel3 *upsPtr = getPixel3(upsampled, x, y);
+				Pixel3 ups = *upsPtr;
+				Pixel3 crr = *getPixel3(current, x, y);
+
+				*upsPtr = vec3Sub(crr, ups, Pixel3);
+			}
+		}
+		__syncthreads();
+	}
+	//No extra synchtreads needed
+	d_imgcpy3(laplacian[nLevels], tempGauss[nLevels]);
+}
+
+__global__ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter){
+	__shared__ double lcl_filter[KERNEL_DIMENSION * KERNEL_DIMENSION];
+	uint32_t dim = KERNEL_DIMENSION * KERNEL_DIMENSION;
+	uint32_t max = dim / blockDim.x;
+	for(uint32_t i = 0; i <= max; i++){
+		uint32_t idx = i * blockDim.x + threadIdx.x;
+		if(idx < dim)
+			lcl_filter[idx] = filter[idx];
+	}
+	__syncthreads();
+
+	Pixel3 *destPxs = dest->pixels;
+	for(int8_t lev = nLevels; lev > 1; lev--){ //Using dest as a temp buffer
+		Image3 *currentLevel = laplacianPyr[lev], *biggerLevel = laplacianPyr[lev - 1];
+		Pixel3 *biggerLevelPxs = biggerLevel->pixels;
+
+		upsampleConvolve(dest, currentLevel, lcl_filter);
+		//No extra synchtreads needed because there already is one at the end of upsampleConvolve 
+		uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
+		uint32_t max = sizeUpsampled / blockDim.x;
+		for(uint32_t i = 0; i <= max; i++){
+			uint32_t px = i * blockDim.x + threadIdx.x;
+			if(px < sizeUpsampled)
+				biggerLevelPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
+		}
+		if(threadIdx.x == 0){
+			biggerLevel->width = dest->width;
+			biggerLevel->height = dest->height; //This could cause disalignment problem
+		}
+		__syncthreads();
+	}
+	//No extra synchtreads needed
+	Image3 *currentLevel = laplacianPyr[1], *biggerLevel = laplacianPyr[0];
+	Pixel3 *biggerLevelPxs = biggerLevel->pixels;
+
+	upsampleConvolve(dest, currentLevel, lcl_filter);
+	uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
+	uint32_t max = sizeUpsampled / blockDim.x;
+	for(uint32_t i = 0; i <= max; i++){
+		uint32_t px = i * blockDim.x + threadIdx.x;
+		if(px < sizeUpsampled)
+			biggerLevelPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
+	}
+	__syncthreads();
 }
 
 /*__host__ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, const uint8_t nThreads){
