@@ -11,7 +11,7 @@
 #include "../utils/extramath.h"
 
 
-Kernel createFilterDevice(){
+__host__ Kernel createFilterDevice(){
 	const double params[KERNEL_DIMENSION] = {0.05, 0.25, 0.4, 0.25, 0.05};
 	Kernel h_filter = (Kernel) malloc(KERNEL_DIMENSION * KERNEL_DIMENSION * sizeof(double));
 
@@ -28,7 +28,7 @@ Kernel createFilterDevice(){
 	return d_filter;
 }
 
-Pyramid createPyramidDevice(uint32_t width, uint32_t height, uint8_t nLevels){
+__host__ Pyramid createPyramidDevice(uint32_t width, uint32_t height, uint8_t nLevels){
 	nLevels++; //Pyramids has one more layer!
 	Pyramid h_p = (Pyramid) malloc(nLevels * sizeof(Image3*));
 	for(uint8_t i = 0; i < nLevels; i++){
@@ -44,7 +44,7 @@ Pyramid createPyramidDevice(uint32_t width, uint32_t height, uint8_t nLevels){
 	return d_p;
 }
 
-Image3 * makeImage3Device(uint32_t width, uint32_t height){
+__host__ Image3 * makeImage3Device(uint32_t width, uint32_t height){
 	Pixel3 *d_img;
 	CHECK(cudaMalloc((void**) &d_img, width * height * sizeof(Pixel3)));
 	Image3 *h_i = (Image3 *) malloc(sizeof(Image3));
@@ -58,7 +58,7 @@ Image3 * makeImage3Device(uint32_t width, uint32_t height){
 	free(h_i);
 	return d_i;
 }
-Image3 * copyImg3Host2Device(Image3 * h_img){
+__host__ Image3 * copyImg3Host2Device(Image3 * h_img){
 	Pixel3 *d_img;
 	CHECK(cudaMalloc((void**) &d_img, h_img->width * h_img->height * sizeof(Pixel3)));
 	CHECK(cudaMemcpy(d_img, h_img->pixels, h_img->width * h_img->height * sizeof(Pixel3), cudaMemcpyHostToDevice));
@@ -111,6 +111,7 @@ __device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint3
 			setPixel3(dest, x, y, getPixel3(source, startX + x, finalY));
 		}
 	}
+	__syncthreads();
 }
 
 __device__ double d_clamp(double a, double min_, double max_) {
@@ -167,4 +168,5 @@ __device__ void d_remap(Image3 * img, const Pixel3 g0, double sigma, double alph
 			}*/
 		}
 	}
+	__syncthreads();
 }

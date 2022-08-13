@@ -37,7 +37,74 @@
 }*/
 
 __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
+	__shared__ Pixel3 ds_upsampled[MAX_PYR_LAYER * MAX_PYR_LAYER];
 	
+	uint32_t smallWidth = source->width, smallHeight = source->height;
+	uint32_t uppedW = smallWidth << 1;
+	uint32_t uppedH = smallHeight << 1;
+	dest->width = uppedW;
+	dest->height = uppedH;
+	const uint8_t  rows = KERNEL_DIMENSION;
+	const uint8_t  cols = KERNEL_DIMENSION;
+	const int32_t  xstart = -1 * cols / 2;
+	const int32_t  ystart = -1 * rows / 2;
+	
+	uint32_t dim = smallWidth * smallHeight;
+	uint32_t max = dim / blockDim.x;
+	for(uint32_t i = 0; i <= max; i++){
+		uint32_t idx = i * blockDim.x + threadIdx.x;
+		if(idx < dim){
+			uint32_t x = idx % smallWidth, y = idx / smallWidth;
+			ds_upsampled[y * smallWidth + x] = *getPixel3(source, x, y);
+		}
+	}
+	__syncthreads();
+
+	dim = uppedW * uppedH;
+	max = dim / blockDim.x;
+
+	//for (uint32_t j = 0; j < uppedH; j++) {
+	//	for (uint32_t i = 0; i < uppedW; i++) {
+	for(uint32_t li = 0; li <= max; li++){
+		uint32_t idx = li * blockDim.x + threadIdx.x;
+		if(idx < dim){
+			uint32_t i = idx % uppedW, j = idx / uppedW;
+
+			Pixel3 c = zero3f;
+			for (uint32_t y = 0; y < rows; y++) {
+                int32_t jy = (j + ystart + y) / 2;
+				for (uint32_t x = 0; x < cols; x++) {
+                    int32_t ix = (i + xstart + x) / 2;
+
+					int32_t oob = ix >= 0 && ix < smallWidth && jy >= 0 && jy < smallHeight;
+					int32_t fi = ix * oob + (i / 2) * (1 - oob), fj = jy * oob + (j / 2) * (1 - oob);
+
+					double kern_elem = kernel[getKernelPosition(x, y)];
+					Pixel3 px = ds_upsampled[fj * uppedW + fi]; //*getPixel3(source, ix, jy);
+					c.x += px.x * kern_elem;
+					c.y += px.y * kern_elem;
+					c.z += px.z * kern_elem;
+                    /*if (ix >= 0 && ix < smallWidth && jy >= 0 && jy < smallHeight) {
+						double kern_elem = kernel[getKernelPosition(x, y)];
+						Pixel3 px = *getPixel3(source, ix, jy);
+
+						c.x += px.x * kern_elem;
+						c.y += px.y * kern_elem;
+						c.z += px.z * kern_elem;
+					} else {
+						double kern_elem = kernel[getKernelPosition(x, y)];
+						Pixel3 px = *getPixel3(source, i / 2, j / 2);
+
+						c.x += px.x * kern_elem;
+						c.y += px.y * kern_elem;
+						c.z += px.z * kern_elem;
+					}*/
+				}
+			}
+			setPixel3(dest, i, j, &c);
+		}
+	}
+	__syncthreads();
 }
 
 __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter){
