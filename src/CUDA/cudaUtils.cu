@@ -96,8 +96,11 @@ __device__ void d_imgcpy3(Image3 *d_dest, Image3 *d_source){
 __device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY){
 	uint32_t w = endX - startX;
 	uint32_t h = endY - startY;
-	dest->width = w;
-	dest->height = h;
+	if(threadIdx.x == 0){
+		dest->width = w;
+		dest->height = h;
+	}
+	__syncthreads();
 
 	uint32_t dim = w * h;
 	uint32_t max = dim / blockDim.x;

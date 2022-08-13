@@ -42,8 +42,11 @@ __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 	uint32_t smallWidth = source->width, smallHeight = source->height;
 	uint32_t uppedW = smallWidth << 1;
 	uint32_t uppedH = smallHeight << 1;
-	dest->width = uppedW;
-	dest->height = uppedH;
+	if(threadIdx.x == 0){
+		dest->width = uppedW;
+		dest->height = uppedH;
+	}
+	__syncthreads();
 	const uint8_t  rows = KERNEL_DIMENSION;
 	const uint8_t  cols = KERNEL_DIMENSION;
 	const int32_t  xstart = -1 * cols / 2;
@@ -110,11 +113,14 @@ __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter){
 	__shared__ Pixel3 ds_downsampled[MAX_PYR_LAYER * MAX_PYR_LAYER];
 	const uint32_t originalW = *width, originalH = *height;
-	*width /= 2;
-	*height /= 2;
-	uint32_t lcl_width = *width;
-	dest->width = lcl_width;
-	dest->height = *height;
+	uint32_t lcl_width = *width / 2;
+	if(threadIdx.x == 0){
+		*width = lcl_width;
+		*height /= 2;
+		dest->width = lcl_width;
+		dest->height = *height;
+	}
+	__syncthreads();
 	uint32_t startingX = originalW & 1;
 	uint32_t startingY = originalH & 1;
 	
