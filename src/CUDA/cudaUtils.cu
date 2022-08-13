@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "cudaStructs.cuh"
 #include "cudaUtils.cuh"
@@ -7,6 +8,7 @@
 #include "../utils/llfUtils.h"
 #include "../utils/structs.h"
 #include "../utils/imageutils.h"
+#include "../utils/extramath.h"
 
 
 Kernel createFilterDevice(){
@@ -111,31 +113,58 @@ __device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint3
 	}
 }
 
-__device__ void d_remap(Image3 * img, const Pixel3 g0, double sigma, double alpha, double beta){
-	uint32_t size = img -> width * img -> height;
-	Pixel3 *pixels = img -> pixels;
-	for(int i = 0; i < size; i++){
-		Pixel3 delta = vec3Sub(pixels[i], g0, Pixel3);
-		double mag = sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
-		if(mag > 1e-10) {
-			delta = vec3DivC(delta, mag, Pixel3);
-		}
+__device__ double d_clamp(double a, double min_, double max_) {
+	int minFlag = a < min_;
+	int maxFlag = a > max_;
+	int flag = minFlag + maxFlag;
+	//if(flag > 1) flag = 1; //no way they are both true at the same time IF THE PARAMS ARE CORRECT :<
+	return a * (1 - flag) + min_ * minFlag + max_ * maxFlag;
+}
+__device__ double d_smoothstep(double a, double b, double u) {
+	double t = d_clamp((u - a) / (b - a), 0.0, 1.0);
+	return t * t * (3 - 2 * t);
+}
 
-		if(mag < sigma){ //Details
+__device__ void d_remap(Image3 * img, const Pixel3 g0, double sigma, double alpha, double beta){
+	uint32_t dim = img -> width * img -> height;
+	uint32_t max = dim / blockDim.x;
+	Pixel3 *pixels = img -> pixels;
+	for(uint32_t i = 0; i <= max; i++){
+		uint32_t idx = i * blockDim.x + threadIdx.x;
+		if(idx < dim){
+
+			Pixel3 delta = vec3Sub(pixels[idx], g0, Pixel3);
+			double mag = sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+			if(mag > 1e-10) delta = vec3DivC(delta, mag, Pixel3);
+
+			int details = mag < sigma;
 			double fraction = mag / sigma;
 			double polynomial = pow(fraction, alpha);
-			if(alpha < 1){
+			if(alpha < 1){ //alpha is one of the entire llf params, so ALL the threads will always take the same branch
 				const double kNoiseLevel = 0.01;
-				double blend = smoothstep(kNoiseLevel, 2 * kNoiseLevel, fraction * sigma);
+				double blend = d_smoothstep(kNoiseLevel, 2 * kNoiseLevel, fraction * sigma);
 				polynomial = blend * polynomial + (1 - blend) * fraction;
 			}
-			double d = sigma * polynomial;
+			double d = (sigma * polynomial) * details + (((mag - sigma) * beta) + sigma) * (1 - details);
 			Pixel3 px = vec3MulC(delta, d, Pixel3);
-			img -> pixels[i] = vec3Add(g0, px, Pixel3);
-		} else { //Edges
-			double d = ((mag - sigma) * beta) + sigma;
-			Pixel3 px = vec3MulC(delta, d, Pixel3);
-			img -> pixels[i] = vec3Add(g0, px, Pixel3);
+			pixels[idx] = vec3Add(g0, px, Pixel3);
+
+			/*if(mag < sigma){ //Details
+				double fraction = mag / sigma;
+				double polynomial = pow(fraction, alpha);
+				if(alpha < 1){ //alpha is one of the entire llf params, so ALL the threads will always take the same branch
+					const double kNoiseLevel = 0.01;
+					double blend = d_smoothstep(kNoiseLevel, 2 * kNoiseLevel, fraction * sigma);
+					polynomial = blend * polynomial + (1 - blend) * fraction;
+				}
+				double d = sigma * polynomial;
+				Pixel3 px = vec3MulC(delta, d, Pixel3);
+				img -> pixels[idx] = vec3Add(g0, px, Pixel3);
+			} else { //Edges
+				double d = ((mag - sigma) * beta) + sigma;
+				Pixel3 px = vec3MulC(delta, d, Pixel3);
+				img -> pixels[idx] = vec3Add(g0, px, Pixel3);
+			}*/
 		}
 	}
 }

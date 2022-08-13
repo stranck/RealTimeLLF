@@ -35,6 +35,11 @@
 		}
 	}
 }*/
+
+__device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
+	
+}
+
 __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter){
 	__shared__ Pixel3 ds_downsampled[MAX_PYR_LAYER * MAX_PYR_LAYER];
 	const uint32_t originalW = *width, originalH = *height;
