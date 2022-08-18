@@ -20,6 +20,7 @@
     #define cudaGetErrorString(e)({"asd";})
     #define __syncthreads(){}
     #define blockDim zero3i32
+    #define blockIdx zero3i32
     #define threadIdx zero3i32
 #endif
 
@@ -40,6 +41,7 @@ __host__ Image3 * copyImg3Host2Device(Image3 * h_img);
 __host__ Pyramid createPyramidDevice(uint32_t width, uint32_t height, uint8_t nLevels);
 __device__ void d_imgcpy3(Image3 *d_dest, Image3 *d_source);
 __device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY);
+__global__ void d_clampImage3(Image3 *img);
 __device__ double d_clamp(double a, double min_, double max_);
 __device__ double d_smoothstep(double a, double b, double u);
 __device__ void d_remap(Image3 * img, const Pixel3 g0, double sigma, double alpha, double beta);

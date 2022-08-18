@@ -117,6 +117,23 @@ __device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint3
 	__syncthreads();
 }
 
+__global__ void d_clampImage3(Image3 *img){
+	__shared__ uint32_t dim;
+	__shared__ Pixel3 *px;
+
+	if(threadIdx.x == 0){
+		dim = img->width * img->height;
+		px = img->pixels;
+	}
+	__syncthreads();
+
+	uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
+	px[i].x = d_clamp(px[i].x, 0, 1);
+	px[i].y = d_clamp(px[i].y, 0, 1);
+	px[i].z = d_clamp(px[i].z, 0, 1);
+	__syncthreads();
+}
+
 __device__ double d_clamp(double a, double min_, double max_) {
 	int minFlag = a < min_;
 	int maxFlag = a > max_;
