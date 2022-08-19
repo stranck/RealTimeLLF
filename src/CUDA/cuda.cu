@@ -273,94 +273,82 @@ __global__ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Ke
 	__syncthreads();
 }
 
-/*__host__ void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels, const uint8_t nThreads){
-	uint32_t width = img->width, height = img->height;
-	nLevels = min(nLevels, 5);
-	nLevels = max(nLevels, 3);//int(ceil(std::abs(std::log2(min(width, height)) - 3))) + 2;
-	Kernel filter = createFilterDevice();
 
-	Pyramid d_gaussPyramid = createPyramidDevice(width, height, nLevels);
-	Pyramid d_outputLaplacian = createPyramidDevice(width, height, nLevels);
 
-	print("Creating first gauss pyramid");
-	gaussianPyramid(d_gaussPyramid, img, nLevels, filter);
-	print("Entering main loop");
-	// Sadly, due to approxxximation in the downsample function, I can't use sum to calculate the pyramid dimension :(
-	//uint32_t t = (0b100 << (nLevels * 2));
-	//uint32_t end = (img->width * img->height * ((t - 1) / 3)) / (t / 4); //sum[i=0, n] D / 4^i
-	uint32_t end = 0;
-	uint32_t pyrDimensions[nLevels + 1];
-	for(uint8_t i = 0; i < nLevels; i++){
-		Image3 *lev = gaussPyramid[i];
-		uint32_t dim = lev->width * lev->height;
-		pyrDimensions[i] = dim;
-		end += dim;
+__global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width, uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, double sigma, double alpha, double beta){
+	__shared__ double lcl_filter[KERNEL_DIMENSION * KERNEL_DIMENSION];
+	Image3 *currentGaussLevel = gaussPyramid[lev];
+	uint32_t x = blockIdx.x, y = blockIdx.y;
+
+	int32_t full_res_y = (1 << lev) * y;
+	int32_t roi_y0 = full_res_y - subregionDimension;
+	int32_t roi_y1 = full_res_y + subregionDimension + 1;
+	int32_t base_y = max(0, roi_y0);
+	int32_t end_y = min(roi_y1, height);
+	int32_t full_res_roi_y = full_res_y - base_y;
+	int32_t full_res_roi_yShifted = full_res_roi_y >> lev;
+
+	int32_t full_res_x = (1 << lev) * x;
+	int32_t roi_x0 = full_res_x - subregionDimension;
+	int32_t roi_x1 = full_res_x + subregionDimension + 1;
+	int32_t base_x = max(0, roi_x0);
+	int32_t end_x = min(roi_x1, width);
+	int32_t full_res_roi_x = full_res_x - base_x;
+
+	uint32_t dim = KERNEL_DIMENSION * KERNEL_DIMENSION;
+	uint32_t max = dim / blockDim.x;
+	for(uint32_t i = 0; i <= max; i++){
+		uint32_t idx = i * blockDim.x + threadIdx.x;
+		if(idx < dim)
+			lcl_filter[idx] = filter[idx];
 	}
-	pyrDimensions[nLevels] = gaussPyramid[nLevels]->width * gaussPyramid[nLevels]->height;
+	__syncthreads();
 
-	Buffers bArr[nThreads];
-	CurrentLevelInfo cliArr[nThreads];
-	#pragma omp parallel num_threads(nThreads)
-	{
-		int threadId = getThreadId();
-		bArr[threadId] = createBuffers(width, height, nLevels);
-		initLevelInfo(&(cliArr[threadId]), pyrDimensions, gaussPyramid);
+	//TODO: Obtain buffer
+
+	Pixel3 g0 = *getPixel3(currentGaussLevel, x, y);
+	d_subimage3(bufferLaplacianPyramid[0], img, base_x, end_x, base_y, end_y); //Using bufferLaplacianPyramid[0] as temp buffer
+	d_remap(bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
+	uint8_t currentNLevels = lev + 1;
+	gaussianPyramid(bufferGaussPyramid, bufferLaplacianPyramid[0], currentNLevels, lcl_filter);
+	laplacianPyramid(bufferLaplacianPyramid, bufferGaussPyramid, currentNLevels, lcl_filter);
+
+	setPixel3(outputLaplacian[lev], x, y, getPixel3(bufferLaplacianPyramid[lev], full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
+
+	//TODO: Release buffer
+}
+__host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, uint8_t h_nLevels, uint32_t h_nThreads){
+	uint32_t h_width = h_img->width, h_height = h_img->height;
+	h_nLevels = min(h_nLevels, 5);
+	h_nLevels = max(h_nLevels, 3);//int(ceil(std::abs(std::log2(min(width, height)) - 3))) + 2;
+	Kernel d_filter = createFilterDevice();
+	Pyramid d_gaussPyramid = createPyramid(h_width, h_height, h_nLevels);
+	Pyramid d_outputLaplacian = createPyramid(h_width, h_height, h_nLevels);
+
+	//TODO: create buffer
+
+	Image3 *d_img = copyImg3Host2Device(h_img);
+	gaussianPyramid<<<1, h_nThreads>>>(d_gaussPyramid, d_img, h_nLevels, d_filter);
+	CHECK(cudaDeviceSynchronize());
+
+	for(uint8_t h_lev = 0; h_lev < h_nLevels; h_lev++){
+		uint32_t h_layerW, h_layerH;
+		getPyramidDimensionsAtLayer(d_gaussPyramid, h_lev, &h_layerW, &h_layerH);
+		dim3 grid(h_layerW, h_layerH);
+		uint32_t subregionDimension = 3 * ((1 << (h_lev + 2)) - 1) / 2;
+
+		__d_llf_internal<<<grid, h_nThreads>>>();
+		CHECK(cudaDeviceSynchronize());
 	}
+	d_copyPyrLevel<<<1, h_nThreads>>>(outputLaplacian, gaussPyramid, h_nLevels);
+	CHECK(cudaDeviceSynchronize());
+	collapse<<<1, h_nThreads>>>(d_img, d_outputLaplacian, h_nLevels, d_filter);
+	CHECK(cudaDeviceSynchronize());
 
-	for(uint32_t idx = 0; idx < end; idx++){
-		int threadId = getThreadId();
-		CurrentLevelInfo *cli = &(cliArr[threadId]);
-		Buffers *b = &(bArr[threadId]);
+	//TODO: Destroy buffer
 
-		if(idx >= cli->nextLevelDimension) //Assuming ofc that idk only goes up for each thread
-			updateLevelInfo(cli, pyrDimensions, gaussPyramid);
-		uint32_t localIdx = idx - cli->prevLevelDimension;
-
-		uint8_t lev = cli->lev;
-		Image3 *currentGaussLevel = cli->currentGaussLevel;
-		uint32_t gaussianWidth = cli->width;
-		uint32_t subregionDimension = cli->subregionDimension;
-		uint32_t x = localIdx % gaussianWidth, y = localIdx / gaussianWidth;
-		
-		//no fuckin clues what this calcs are
-		if(y != cli->oldY){
-			uint32_t full_res_y = (1 << lev) * y;
-			uint32_t roi_y1 = full_res_y + subregionDimension + 1;
-			cli->base_y = subregionDimension > full_res_y ? 0 : full_res_y - subregionDimension;
-			cli->end_y = min(roi_y1, height);
-			uint32_t full_res_roi_y = full_res_y - cli->base_y;
-			cli->full_res_roi_yShifted = full_res_roi_y >> lev;
-			cli->oldY = y;
-		}
-
-		uint32_t full_res_x = (1 << lev) * x;
-		uint32_t roi_x1 = full_res_x + subregionDimension + 1;
-		uint32_t base_x = subregionDimension > full_res_x ? 0 : full_res_x - subregionDimension;
-		uint32_t end_x = min(roi_x1, width);
-		uint32_t full_res_roi_x = full_res_x - base_x;
-
-		Pixel3 g0 = *getPixel3(currentGaussLevel, x, y);
-		subimage3(b->bufferLaplacianPyramid[0], img, base_x, end_x, cli->base_y, cli->end_y); //Using b.bufferLaplacianPyramid[0] as temp buffer
-		remap(b->bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
-		uint8_t currentNLevels = cli->currentNLevels;
-		gaussianPyramid(b->bufferGaussPyramid, b->bufferLaplacianPyramid[0], currentNLevels, filter);
-		laplacianPyramid(b->bufferLaplacianPyramid, b->bufferGaussPyramid, currentNLevels, filter);
-
-		setPixel3(outputLaplacian[lev], x, y, getPixel3(b->bufferLaplacianPyramid[lev], full_res_roi_x >> lev, cli->full_res_roi_yShifted)); //idk why i had to shift those
-	}
-
-	imgcpy3(outputLaplacian[nLevels], gaussPyramid[nLevels]);
-	print("Collapsing");
-	collapse(img, outputLaplacian, nLevels, filter);
-
-	destroyPyramid(&gaussPyramid, nLevels);
-	destroyPyramid(&outputLaplacian, nLevels);
-	for(uint8_t i = 0; i < nThreads; i++){
-		destroyPyramid(&(bArr[i].bufferGaussPyramid), nLevels);
-		destroyPyramid(&(bArr[i].bufferLaplacianPyramid), nLevels);
-	}
-	destroyFilter(&filter);
-}*/
+	//TODO: copy back image to host h_img
+}
 
 uint32_t getPixelNoPerPyramid(uint8_t nLevels){
 	uint32_t subregionDimension = 3 * ((1 << (nLevels + 2)) - 1);

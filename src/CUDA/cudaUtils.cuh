@@ -13,15 +13,19 @@
 	#define __device__
 	#define __host__
     #define cudaError_t int
+	#define cudaMemcpyDeviceToHost 0
     #define cudaMemcpyHostToDevice 1
     #define cudaSuccess 0
     #define cudaMalloc(a, b)({int disajiodjsao = 0; disajiodjsao;})
     #define cudaMemcpy(a, b, c, d)({int dkosapkogkg = 0; dkosapkogkg;})
     #define cudaGetErrorString(e)({"asd";})
     #define __syncthreads(){}
+	#define cudaDeviceSynchronize(){}
     #define blockDim zero3i32
     #define blockIdx zero3i32
     #define threadIdx zero3i32
+	#define dim3 Vec3u32
+	#define grid(x, y)({dim3{x, y, 0}});
 #endif
 
 
@@ -39,7 +43,9 @@ __host__ Kernel createFilterDevice();
 __host__ Image3 * makeImage3Device(uint32_t width, uint32_t height);
 __host__ Image3 * copyImg3Host2Device(Image3 * h_img);
 __host__ Pyramid createPyramidDevice(uint32_t width, uint32_t height, uint8_t nLevels);
+__host__ void getPyramidDimensionsAtLayer(Pyramid pyr, uint8_t level, uint32_t *width, uint32_t *height);
 __device__ void d_imgcpy3(Image3 *d_dest, Image3 *d_source);
+__global__ void d_copyPyrLevel(Pyramid dst_pyr, Pyramid src_pyr, uint8_t level);
 __device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY);
 __global__ void d_clampImage3(Image3 *img);
 __device__ double d_clamp(double a, double min_, double max_);

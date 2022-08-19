@@ -74,24 +74,44 @@ __host__ Image3 * copyImg3Host2Device(Image3 * h_img){
 	return d_i;
 }
 
-//__device__ 
+__global__ void  __d_getPyramidDimensionsAtLayer_internal(Pyramid pyr, uint8_t level, uint32_t *width, uint32_t *height){
+	if(threadIdx.x == 0){
+		Image3 *lvl = pyr[level];
+		cudaMemcpy(width, lvl->width, sizeof(uint32_t), cudaMemcpyDeviceToHost);
+		cudaMemcpy(height, lvl->height, sizeof(uint32_t), cudaMemcpyDeviceToHost);
+	} 
+	__syncthreads();
+}
+__host__ void getPyramidDimensionsAtLayer(Pyramid pyr, uint8_t level, uint32_t *width, uint32_t *height){
+	__d_getPyramidDimensionsAtLayer_internal<<<1, 1>>>(pyr, level, width, height);
+	CHECK(cudaDeviceSynchronize());
+}
 
 __device__ void d_imgcpy3(Image3 *d_dest, Image3 *d_source){
+	__shared__ uint32_t dim;
+	__shared__ Pixel3* d_destPxs;
+	__shared__ Pixel3* d_srcPxs;
+
 	if(threadIdx.x == 0){
 		d_dest->width = d_source->width;
 		d_dest->height = d_source->height;
 		//CHECK(cudaMemcpy(d_dest->pixels, d_source->pixels, d_dest->width * d_dest->height * sizeof(Pixel3), cudaMemcpyDeviceToDevice));
+		dim = d_dest->width * d_dest->height;
+		d_destPxs = d_dest->pixels;
+		d_srcPxs = d_source->pixels;
 	}
 	__syncthreads();
-	uint32_t dim = d_dest->width * d_dest->height;
 	uint32_t max = dim / blockDim.x;
 	for(uint32_t i = 0; i <= max; i++){
 		uint32_t idx = i * blockDim.x + threadIdx.x;
 		if(idx < dim)
-			d_dest->pixels[idx] = d_source->pixels[idx];
+			d_destPxs[idx] = d_srcPxs[idx];
 	}
 	__syncthreads();
 }
+__global__ void d_copyPyrLevel(Pyramid dst_pyr, Pyramid src_pyr, uint8_t level){
+	d_imgcpy3(dst_pyr[level], src_pyr[level]);
+} 
 
 __device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY){
 	uint32_t w = endX - startX;
