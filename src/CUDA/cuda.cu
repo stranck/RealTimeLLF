@@ -1,4 +1,6 @@
-//#define CUDA_INCLUDE //had to do this to fix vs code intellisense doing random stuff
+#pragma once
+
+#define CUDA_INCLUDE //had to do this to fix vs code intellisense doing random stuff
 
 #define MAX_LAYERS 5
 #define MAX_PYR_LAYER 3 * ((1 << (MAX_LAYERS + 2)) - 1)
@@ -9,6 +11,7 @@
 #include "../utils/structs.h"
 #include "../utils/vects.h"
 #include "../utils/utils.h"
+#include "bufferManager.cuh"
 #include "cudaStructs.cuh"
 #include "cudaUtils.cuh"
 #include <math.h>
@@ -275,7 +278,8 @@ __global__ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Ke
 
 
 
-__global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width, uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, double sigma, double alpha, double beta){
+__global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width,
+uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, double sigma, double alpha, double beta, PyrBuffer *buffer){
 	__shared__ double lcl_filter[KERNEL_DIMENSION * KERNEL_DIMENSION];
 	Image3 *currentGaussLevel = gaussPyramid[lev];
 	uint32_t x = blockIdx.x, y = blockIdx.y;
@@ -304,20 +308,33 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 	}
 	__syncthreads();
 
-	//TODO: Obtain buffer
+	__shared__ Pyramid bufferLaplacianPyramid, bufferGaussPyramid;
+	__shared__ Pixel3 g0;
+	NodeBuffer *node;
+	if(threadIdx.x == 0){
+		node = d_aquireBuffer(buffer);
+		bufferLaplacianPyramid = node->bufferLaplacianPyramid;
+		bufferGaussPyramid = node->bufferGaussPyramid;
 
-	Pixel3 g0 = *getPixel3(currentGaussLevel, x, y);
+		g0 = *getPixel3(currentGaussLevel, x, y);
+	}
+	__syncthreads();
+
 	d_subimage3(bufferLaplacianPyramid[0], img, base_x, end_x, base_y, end_y); //Using bufferLaplacianPyramid[0] as temp buffer
 	d_remap(bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
 	uint8_t currentNLevels = lev + 1;
 	gaussianPyramid(bufferGaussPyramid, bufferLaplacianPyramid[0], currentNLevels, lcl_filter);
 	laplacianPyramid(bufferLaplacianPyramid, bufferGaussPyramid, currentNLevels, lcl_filter);
 
-	setPixel3(outputLaplacian[lev], x, y, getPixel3(bufferLaplacianPyramid[lev], full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
-
-	//TODO: Release buffer
+	if(threadIdx.x == 0){
+		setPixel3(outputLaplacian[lev], x, y, getPixel3(bufferLaplacianPyramid[lev], full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
+		
+		d_releaseBuffer(node, buffer);
+	}
+	__syncthreads();
 }
-__host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, uint8_t h_nLevels, uint32_t h_nThreads){
+
+__host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, uint8_t h_nLevels, uint32_t h_nThreads, uint32_t h_elementsNo){
 	uint32_t h_width = h_img->width, h_height = h_img->height;
 	h_nLevels = min(h_nLevels, 5);
 	h_nLevels = max(h_nLevels, 3);//int(ceil(std::abs(std::log2(min(width, height)) - 3))) + 2;
@@ -325,7 +342,7 @@ __host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, 
 	Pyramid d_gaussPyramid = createPyramid(h_width, h_height, h_nLevels);
 	Pyramid d_outputLaplacian = createPyramid(h_width, h_height, h_nLevels);
 
-	//TODO: create buffer
+	PyrBuffer *d_buffer = createBufferDevice(h_elementsNo, (3 * ((1 << (h_nLevels + 1)) - 1)), h_nLevels);
 
 	Image3 *d_img = copyImg3Host2Device(h_img);
 	gaussianPyramid<<<1, h_nThreads>>>(d_gaussPyramid, d_img, h_nLevels, d_filter);
@@ -335,17 +352,17 @@ __host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, 
 		uint32_t h_layerW, h_layerH;
 		getPyramidDimensionsAtLayer(d_gaussPyramid, h_lev, &h_layerW, &h_layerH);
 		dim3 grid(h_layerW, h_layerH);
-		uint32_t subregionDimension = 3 * ((1 << (h_lev + 2)) - 1) / 2;
+		uint32_t h_subregionDimension = 3 * ((1 << (h_lev + 2)) - 1) / 2;
 
-		__d_llf_internal<<<grid, h_nThreads>>>();
+		__d_llf_internal<<<grid, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, d_img, h_width, h_height, h_lev, h_subregionDimension, d_filter, h_sigma, h_alpha, h_beta, d_buffer);
 		CHECK(cudaDeviceSynchronize());
 	}
-	d_copyPyrLevel<<<1, h_nThreads>>>(outputLaplacian, gaussPyramid, h_nLevels);
+	d_copyPyrLevel<<<1, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, h_nLevels);
 	CHECK(cudaDeviceSynchronize());
 	collapse<<<1, h_nThreads>>>(d_img, d_outputLaplacian, h_nLevels, d_filter);
 	CHECK(cudaDeviceSynchronize());
 
-	//TODO: Destroy buffer
+	destroyBufferDevice(h_elementsNo, h_nLevels, d_buffer);
 
 	//TODO: copy back image to host h_img
 }

@@ -2,13 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "cudaStructs.cuh"
+#include "cuda.cu"
 #include "cudaUtils.cuh"
+#include "cudaStructs.cuh"
 #include "../utils/utils.h"
-#include "../utils/llfUtils.h"
 #include "../utils/structs.h"
-#include "../utils/imageutils.h"
+#include "../utils/llfUtils.h"
 #include "../utils/extramath.h"
+#include "../utils/imageutils.h"
 
 
 __host__ Kernel createFilterDevice(){
@@ -28,6 +29,17 @@ __host__ Kernel createFilterDevice(){
 	return d_filter;
 }
 
+__device__ Pyramid d_createPyramid(uint32_t width, uint32_t height, uint8_t nLevels){
+	nLevels++; //Pyramids has one more layer!
+	Pyramid p;
+	cudaMalloc(&p, nLevels * sizeof(Image3*));
+	for(uint8_t i = 0; i < nLevels; i++){
+		p[i] = d_makeImage3(width, height);
+		width = width / 2 + (width & 1);
+		height = height / 2 + (height & 1);
+	}
+	return p;
+}
 __host__ Pyramid createPyramidDevice(uint32_t width, uint32_t height, uint8_t nLevels){
 	nLevels++; //Pyramids has one more layer!
 	Pyramid h_p = (Pyramid) malloc(nLevels * sizeof(Image3*));
@@ -43,7 +55,29 @@ __host__ Pyramid createPyramidDevice(uint32_t width, uint32_t height, uint8_t nL
 	free(h_p);
 	return d_p;
 }
+__device__ void d_destroydPyramid(Pyramid pyr, uint8_t nLevels){
+	for(uint8_t i = 0; i <= nLevels; i++)
+		d_destroyImage3(pyr[i]);
+	cudaFree(pyr);
+}
+__host__ void destroyPyramidDevice(Pyramid d_pyr, uint8_t h_nLevels){
+	Pyramid h_pyr;
+	CHECK(cudaMemcpy(h_pyr, d_pyr, h_nLevels * sizeof(Image3*), cudaMemcpyHostToDevice));
+	for(uint8_t i = 0; i <= h_nLevels; i++)
+		destroyImage3Device(h_pyr[i]);
+	CHECK(cudaFree(d_pyr));
+}
 
+__device__ Image3 * d_makeImage3(uint32_t width, uint32_t height){
+	Image3 *i;
+	Pixel3 *img;
+	cudaMalloc(&img, width * height * sizeof(Pixel3));
+	cudaMalloc(&i, sizeof(Image3));
+	i -> width = width;
+	i -> height = height;
+	i -> pixels = img;
+	return i;
+}
 __host__ Image3 * makeImage3Device(uint32_t width, uint32_t height){
 	Pixel3 *d_img;
 	CHECK(cudaMalloc((void**) &d_img, width * height * sizeof(Pixel3)));
@@ -57,6 +91,16 @@ __host__ Image3 * makeImage3Device(uint32_t width, uint32_t height){
 	CHECK(cudaMemcpy(d_i, h_i, sizeof(Image3), cudaMemcpyHostToDevice));
 	free(h_i);
 	return d_i;
+}
+__device__ void d_destroyImage3(Image3 *img){
+	cudaFree(img -> pixels);
+	cudaFree(img);
+}
+__host__ void destroyImage3Device(Image3 *d_img){
+	Image3 *h_img;
+	CHECK(cudaMemcpy(h_img, d_img, sizeof(Image3), cudaMemcpyDeviceToHost));
+	CHECK(cudaFree(h_img->pixels));
+	CHECK(cudaFree(d_img));
 }
 __host__ Image3 * copyImg3Host2Device(Image3 * h_img){
 	Pixel3 *d_img;
@@ -77,8 +121,8 @@ __host__ Image3 * copyImg3Host2Device(Image3 * h_img){
 __global__ void  __d_getPyramidDimensionsAtLayer_internal(Pyramid pyr, uint8_t level, uint32_t *width, uint32_t *height){
 	if(threadIdx.x == 0){
 		Image3 *lvl = pyr[level];
-		cudaMemcpy(width, lvl->width, sizeof(uint32_t), cudaMemcpyDeviceToHost);
-		cudaMemcpy(height, lvl->height, sizeof(uint32_t), cudaMemcpyDeviceToHost);
+		cudaMemcpy(width, &(lvl->width), sizeof(uint32_t), cudaMemcpyDeviceToHost);
+		cudaMemcpy(height, &(lvl->height), sizeof(uint32_t), cudaMemcpyDeviceToHost);
 	} 
 	__syncthreads();
 }

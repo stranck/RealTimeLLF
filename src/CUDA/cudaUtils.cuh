@@ -40,14 +40,20 @@
 
 #define KERNEL_DIMENSION 5
 __host__ Kernel createFilterDevice();
-__host__ Image3 * makeImage3Device(uint32_t width, uint32_t height);
+__host__ void destroyImage3Device(Image3 *d_img);
 __host__ Image3 * copyImg3Host2Device(Image3 * h_img);
+__host__ Image3 * makeImage3Device(uint32_t width, uint32_t height);
+__host__ void destroyPyramidDevice(Pyramid d_pyr, uint8_t h_nLevels);
 __host__ Pyramid createPyramidDevice(uint32_t width, uint32_t height, uint8_t nLevels);
 __host__ void getPyramidDimensionsAtLayer(Pyramid pyr, uint8_t level, uint32_t *width, uint32_t *height);
-__device__ void d_imgcpy3(Image3 *d_dest, Image3 *d_source);
 __global__ void d_copyPyrLevel(Pyramid dst_pyr, Pyramid src_pyr, uint8_t level);
-__device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY);
 __global__ void d_clampImage3(Image3 *img);
-__device__ double d_clamp(double a, double min_, double max_);
+__device__ void d_destroyImage3(Image3 *img);
+__device__ void d_imgcpy3(Image3 *d_dest, Image3 *d_source);
 __device__ double d_smoothstep(double a, double b, double u);
+__device__ double d_clamp(double a, double min_, double max_);
+__device__ void d_destroydPyramid(Pyramid pyr, uint8_t nLevels);
+__device__ Image3 * d_makeImage3(uint32_t width, uint32_t height);
+__device__ Pyramid d_createPyramid(uint32_t width, uint32_t height, uint8_t nLevels);
 __device__ void d_remap(Image3 * img, const Pixel3 g0, double sigma, double alpha, double beta);
+__device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY);
