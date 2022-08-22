@@ -344,7 +344,8 @@ __host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, 
 
 	PyrBuffer *d_buffer = createBufferDevice(h_elementsNo, (3 * ((1 << (h_nLevels + 1)) - 1)), h_nLevels);
 
-	Image3 *d_img = copyImg3Host2Device(h_img);
+	Image3 *d_img = makeImage3Device(h_width, h_height);
+	copyImg3Host2Device(d_img, h_img);
 	gaussianPyramid<<<1, h_nThreads>>>(d_gaussPyramid, d_img, h_nLevels, d_filter);
 	CHECK(cudaDeviceSynchronize());
 
@@ -361,10 +362,16 @@ __host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, 
 	CHECK(cudaDeviceSynchronize());
 	collapse<<<1, h_nThreads>>>(d_img, d_outputLaplacian, h_nLevels, d_filter);
 	CHECK(cudaDeviceSynchronize());
+	d_clampImage3<<<(((h_width * h_height) + h_nThreads - 1) / h_nThreads), h_nThreads>>>(d_img);
+	CHECK(cudaDeviceSynchronize());
+
+	copyImg3Device2Host(h_img, d_img);
 
 	destroyBufferDevice(h_elementsNo, h_nLevels, d_buffer);
-
-	//TODO: copy back image to host h_img
+	destroyImage3Device(d_img);
+	destroyPyramidDevice(d_gaussPyramid, h_nLevels);
+	destroyPyramidDevice(d_outputLaplacian, h_nLevels);
+	destroyFilterDevice(d_filter);
 }
 
 uint32_t getPixelNoPerPyramid(uint8_t nLevels){
@@ -383,9 +390,8 @@ int main(){
 	AlphaMap map = getAlphaMap(img4);
 	destroyImage4(&img4);
 
-	//llf(img, 0.35, 0.4, 5, 3, 24);
+	llf(img, 0.35, 0.4, 5, 3, 128, 1);
 
-	clampImage3(img);
 	img4 = image3to4AlphaMap(img, map);
 	destroyImage3(&img);
 	printStaticImage4(img4);
