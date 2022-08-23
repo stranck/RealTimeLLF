@@ -2,20 +2,22 @@
 
 #include <stdint.h>
 #include "../utils/structs.h"
-#include "cudaStructs.cuh"
-#include "cuda.cu"
+#include "cuda.cuh"
 
 #ifdef CUDA_INCLUDE
+	#include <cuda.h>
+	#include <cuda_runtime.h>
 	#include <cuda/semaphore>
 #else
 	#include <semaphore>
 #endif
 
-typedef struct {
+typedef struct NodeBuffer NodeBuffer;
+struct NodeBuffer {
 	Pyramid bufferLaplacianPyramid;
 	Pyramid bufferGaussPyramid;
 	NodeBuffer *next;
-} NodeBuffer;
+};
 
 typedef struct {
 	cuda::binary_semaphore<cuda::thread_scope_device> managerMutex;

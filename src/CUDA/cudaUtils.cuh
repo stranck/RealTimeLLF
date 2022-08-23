@@ -1,8 +1,15 @@
 #pragma once
 
+#include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include "cuda.cuh"
+#include "../utils/utils.h"
 #include "../utils/structs.h"
-#include "cudaStructs.cuh"
+#include "../utils/llfUtils.h"
+#include "../utils/extramath.h"
+#include "../utils/imageutils.h"
 #ifdef CUDA_INCLUDE
 	#include <cuda.h>
 	#include <cuda_runtime.h>
@@ -28,7 +35,6 @@
 	#define grid(x, y)({dim3{x, y, 0}});
 #endif
 
-
 #define CHECK(call){                    \
     const cudaError_t error = call;     \
     if(error != cudaSuccess){           \
@@ -36,6 +42,13 @@
         printf("code: %d, reason %s\n", error, cudaGetErrorString(error)); \
         exit(1);                        \
     }                                   \
+}
+
+__device__ inline Pixel3 d_getPixel3(Image3 *img, uint32_t x, uint32_t y){
+	return img->pixels[y * img->width + x];
+}
+__device__ inline void d_setPixel3(Image3 *img, uint32_t x, uint32_t y, Pixel3 px){
+	img->pixels[y * img->width + x] = px;
 }
 
 #define KERNEL_DIMENSION 5

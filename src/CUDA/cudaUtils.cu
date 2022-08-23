@@ -1,15 +1,4 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "cuda.cu"
 #include "cudaUtils.cuh"
-#include "cudaStructs.cuh"
-#include "../utils/utils.h"
-#include "../utils/structs.h"
-#include "../utils/llfUtils.h"
-#include "../utils/extramath.h"
-#include "../utils/imageutils.h"
 
 
 __host__ Kernel createFilterDevice(){
