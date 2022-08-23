@@ -81,7 +81,7 @@ void convolve(Image3 *dest, Image3 *source, Kernel kernel) {
 
 	for (uint32_t j = 0; j < dest->height; j++) {
 		for (uint32_t i = 0; i < dest->width; i++) {
-			Pixel3 c = zero3f;
+			Pixel3 c = zero3vect;
 			for (uint32_t y = 0; y < rows; y++) {
                 int32_t jy = j + ystart + y;
 				for (uint32_t x = 0; x < cols; x++) {

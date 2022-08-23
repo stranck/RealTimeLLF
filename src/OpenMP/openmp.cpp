@@ -31,7 +31,7 @@ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t 
 
 	for (uint32_t j = startingY; j < originalH; j += 2) {
 		for (uint32_t i = startingX; i < originalW; i += 2) {
-			Pixel3 c = zero3f;
+			Pixel3 c = zero3vect;
 			for (uint32_t y = 0; y < rows; y++) {
 				int32_t jy = j + (ystart + y) * 2 - startingY;
 				for (uint32_t x = 0; x < cols; x++) {
@@ -73,7 +73,7 @@ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 
 	for (uint32_t j = 0; j < uppedH; j++) {
 		for (uint32_t i = 0; i < uppedW; i++) {
-			Pixel3 c = zero3f;
+			Pixel3 c = zero3vect;
 			for (uint32_t y = 0; y < rows; y++) {
                 int32_t jy = (j + ystart + y) / 2;
 				for (uint32_t x = 0; x < cols; x++) {
@@ -151,7 +151,7 @@ void downsampleConvolve_parallel(Image3 *dest, Image3 *source, uint32_t *width, 
 	for(uint32_t idx = 0; idx < dim; idx += 2){
 		uint32_t i = (idx % originalW) + startingX, j = (idx / originalW) + startingY;
 
-		Pixel3 c = zero3f;
+		Pixel3 c = zero3vect;
 		for (uint32_t y = 0; y < rows; y++) {
 			int32_t jy = j + (ystart + y) * 2 - startingY;
 			for (uint32_t x = 0; x < cols; x++) {
@@ -195,7 +195,7 @@ void upsampleConvolve_parallel(Image3 *dest, Image3 *source, Kernel kernel, cons
 	for (uint32_t idx = 0; idx < dim; idx++) {
 		uint32_t i = idx % uppedW, j = idx / uppedW;
 
-		Pixel3 c = zero3f;
+		Pixel3 c = zero3vect;
 		for (uint32_t y = 0; y < rows; y++) {
 			int32_t jy = (j + ystart + y) / 2;
 			for (uint32_t x = 0; x < cols; x++) {

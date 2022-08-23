@@ -85,7 +85,7 @@ __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 		if(idx < dim){
 			uint32_t i = idx % uppedW, j = idx / uppedW;
 
-			Pixel3 c = zero3f;
+			Pixel3 c = zero3vect;
 			for (uint32_t y = 0; y < rows; y++) {
                 int32_t jy = (j + ystart + y) / 2;
 				for (uint32_t x = 0; x < cols; x++) {
@@ -165,7 +165,7 @@ __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width
 
 		if(idx < dim){
 			uint32_t i = idx % lcl_width, j = idx / lcl_width;
-			Pixel3 c = zero3f;
+			Pixel3 c = zero3vect;
 			for (int32_t y = 0; y < rows; y++) {
 				int32_t jy = j + ystart + y;
 				for (int32_t x = 0; x < cols; x++) {
