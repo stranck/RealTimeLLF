@@ -27,8 +27,8 @@ __device__ void d_releaseBuffer(NodeBuffer *node, PyrBuffer *buffer){
 
 
 __global__ void __d_createBufferDevice__internal(uint32_t elementsNo, uint32_t pixelSize, uint8_t nLevels, PyrBuffer *buff){
-	buff->managerMutex.binary_semaphore();
-	buff->availableBuffers.counting_semaphore();
+	//buff->managerMutex.counting_semaphore();
+	//buff->availableBuffers.counting_semaphore();
 	buff->first = NULL;
 
 	for(uint32_t i = 0; i < elementsNo; i++){
@@ -58,7 +58,7 @@ __global__ void __d_destroyBufferDevice__internal(uint32_t elementsNo, uint8_t n
 		d_destroydPyramid(node->bufferLaplacianPyramid, nLevels);
 		cudaFree(node);
 	}
-	buff->managerMutex.~binary_semaphore();
+	buff->managerMutex.~counting_semaphore();
 	buff->availableBuffers.~counting_semaphore();
 }
 __host__ void destroyBufferDevice(uint32_t elementsNo, uint8_t h_nLevels, PyrBuffer *d_buff){

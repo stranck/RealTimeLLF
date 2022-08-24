@@ -22,8 +22,6 @@
 	#include <cuda_runtime.h>
 #endif
 
-#include "../utils/test/testimage.h"
-
 __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel);
 __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter);
 __device__ void __gaussianPyramid_internal(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLevels, Kernel d_filter);

@@ -1,5 +1,8 @@
 #pragma once
 
+typedef struct NodeBuffer NodeBuffer;
+typedef struct PyrBuffer PyrBuffer;
+
 #include <stdint.h>
 #include "../utils/structs.h"
 #include "cuda.cuh"
@@ -12,18 +15,17 @@
 	#include <semaphore>
 #endif
 
-typedef struct NodeBuffer NodeBuffer;
 struct NodeBuffer {
 	Pyramid bufferLaplacianPyramid;
 	Pyramid bufferGaussPyramid;
 	NodeBuffer *next;
 };
 
-typedef struct {
+struct PyrBuffer {
 	cuda::binary_semaphore<cuda::thread_scope_device> managerMutex;
 	cuda::counting_semaphore<cuda::thread_scope_device> availableBuffers;
 	NodeBuffer *first;
-} PyrBuffer;
+};
 
 __device__ NodeBuffer * d_aquireBuffer(PyrBuffer *buffer);
 __device__ void d_releaseBuffer(NodeBuffer *node, PyrBuffer *buffer);

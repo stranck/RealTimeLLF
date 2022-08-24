@@ -3,7 +3,7 @@
 
 __host__ Kernel createFilterDevice(){
 	const double params[KERNEL_DIMENSION] = {0.05, 0.25, 0.4, 0.25, 0.05};
-	Kernel h_filter[KERNEL_DIMENSION * KERNEL_DIMENSION];
+	double h_filter[KERNEL_DIMENSION * KERNEL_DIMENSION];
 
 	for(uint8_t i = 0; i < KERNEL_DIMENSION; i++){
 		for(uint8_t j = 0; j < KERNEL_DIMENSION; j++){
@@ -13,6 +13,7 @@ __host__ Kernel createFilterDevice(){
 
 	Kernel d_filter;
 	CHECK(cudaMalloc((void**) &d_filter, KERNEL_DIMENSION * KERNEL_DIMENSION * sizeof(double)));
+	printff("D_FILTER ADDR: 0x%016llx\n", d_filter);
 	CHECK(cudaMemcpy(d_filter, h_filter, KERNEL_DIMENSION * KERNEL_DIMENSION * sizeof(double), cudaMemcpyHostToDevice));
 	return d_filter;
 }
@@ -36,13 +37,21 @@ __host__ Pyramid createPyramidDevice(uint32_t width, uint32_t height, uint8_t nL
 	Pyramid h_p = (Pyramid) alloca(nLevels * sizeof(Image3*));
 	for(uint8_t i = 0; i < nLevels; i++){
 		h_p[i] = makeImage3Device(width, height);
+		printff("CreatePyramidDevice: makeImage3Device returned 0x%016llx. Params: %u %u %u\n", h_p[i], width, height, nLevels);
 		width = width / 2 + (width & 1);
 		height = height / 2 + (height & 1);
 	}
+	printff("CreatePyramidDevice: Pyramid done. First entry: %016llx\n", h_p[0]);
 
 	Pyramid d_p;
 	CHECK(cudaMalloc((void**) &d_p, nLevels * sizeof(Image3*)));
+	printff("CreatePyramidDevice: malloc pyramid at 0x%032llx. Params: %u\n", d_p, nLevels);
 	CHECK(cudaMemcpy(d_p, h_p, nLevels * sizeof(Image3*), cudaMemcpyHostToDevice));
+
+	Pyramid asd = (Pyramid) alloca(nLevels * sizeof(Image3*));
+	CHECK(cudaMemcpy(asd, d_p, nLevels * sizeof(Image3*), cudaMemcpyDeviceToHost));
+	printff("CreatePyramidDevice: copy back first entry: 0x%016llx. Params: %u\n", asd[0], nLevels);
+	
 	return d_p;
 }
 __device__ void d_destroydPyramid(Pyramid pyr, uint8_t nLevels){
@@ -51,8 +60,8 @@ __device__ void d_destroydPyramid(Pyramid pyr, uint8_t nLevels){
 	cudaFree(pyr);
 }
 __host__ void destroyPyramidDevice(Pyramid d_pyr, uint8_t h_nLevels){
-	Pyramid h_pyr = (Pyramid) alloca(h_nLevels * sizeof(Image3*));
-	CHECK(cudaMemcpy(h_pyr, d_pyr, h_nLevels * sizeof(Image3*), cudaMemcpyHostToDevice));
+	Pyramid h_pyr = (Pyramid) alloca((h_nLevels + 1)* sizeof(Image3*));
+	CHECK(cudaMemcpy(h_pyr, d_pyr, (h_nLevels + 1) * sizeof(Image3*), cudaMemcpyDeviceToHost));
 	for(uint8_t i = 0; i <= h_nLevels; i++)
 		destroyImage3Device(h_pyr[i]);
 	CHECK(cudaFree(d_pyr));
@@ -107,17 +116,15 @@ __host__ void copyImg3Device2Host(Image3 *h_imgDst, Image3 *d_imgSrc){
 	CHECK(cudaMemcpy(h_imgDst->pixels, h_i.pixels, sizeof(Image3), cudaMemcpyDeviceToHost));
 }
 
-__global__ void  __d_getPyramidDimensionsAtLayer_internal(Pyramid pyr, uint8_t level, uint32_t *width, uint32_t *height){
-	if(threadIdx.x == 0){
-		Image3 *lvl = pyr[level];
-		cudaMemcpy(width, &(lvl->width), sizeof(uint32_t), cudaMemcpyDeviceToHost);
-		cudaMemcpy(height, &(lvl->height), sizeof(uint32_t), cudaMemcpyDeviceToHost);
-	} 
-	__syncthreads();
-}
-__host__ void getPyramidDimensionsAtLayer(Pyramid pyr, uint8_t level, uint32_t *width, uint32_t *height){
-	__d_getPyramidDimensionsAtLayer_internal<<<1, 1>>>(pyr, level, width, height);
-	CHECK(cudaDeviceSynchronize());
+__host__ void getPyramidDimensionsAtLayer(Pyramid d_pyr, uint8_t h_level, uint32_t *h_width, uint32_t *h_height){
+	Image3 h_lvl;
+	Pyramid h_pyr = (Pyramid) alloca((h_level + 1) * sizeof(Image3*)); //We just need to copy up to level pointers;
+	printff("getPyramidDimensionsAtLayer: d_pyr 0x%016llx. Params: %u, %u\n", d_pyr, h_level, (h_level + 1) * sizeof(Image3*));
+	CHECK(cudaMemcpy(h_pyr, d_pyr, (h_level + 1) * sizeof(Image3*), cudaMemcpyDeviceToHost));
+	printff("getPyramidDimensionsAtLayer: H_LVL: 0x%016llx       H_PYR[0]: 0x%016llx       H_PYR[H_LEVEL]: 0x%016llx       *H_PYR[H_LEVEL]: 0x%016llx\n", &h_lvl, h_pyr[0], h_pyr[h_level], h_pyr[h_level]);
+	CHECK(cudaMemcpy(&h_lvl, h_pyr[h_level], sizeof(Image3), cudaMemcpyDeviceToHost));
+	*h_width = h_lvl.width;
+	*h_height = h_lvl.height;
 }
 
 __device__ void d_imgcpy3(Image3 *d_dest, Image3 *d_source){
@@ -128,7 +135,6 @@ __device__ void d_imgcpy3(Image3 *d_dest, Image3 *d_source){
 	if(threadIdx.x == 0){
 		d_dest->width = d_source->width;
 		d_dest->height = d_source->height;
-		//CHECK(cudaMemcpy(d_dest->pixels, d_source->pixels, d_dest->width * d_dest->height * sizeof(Pixel3), cudaMemcpyDeviceToDevice));
 		dim = d_dest->width * d_dest->height;
 		d_destPxs = d_dest->pixels;
 		d_srcPxs = d_source->pixels;
@@ -155,22 +161,22 @@ __device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint3
 	}
 	__syncthreads();
 
+	Pixel3 *destPx = dest->pixels, *srcPx = source->pixels;
+	uint32_t srcW = source->width;
 	uint32_t dim = w * h;
 	uint32_t max = dim / blockDim.x;
 	for(uint32_t i = 0; i <= max; i++){
 		uint32_t idx = i * blockDim.x + threadIdx.x;
 		if(idx < dim){
 			uint32_t x = idx % w, y = idx / w;
-	//for(uint32_t y = 0; y < h; y++){
 			uint32_t finalY = startY + y;
-		//for(uint32_t x = 0; x < w; x++){
-			setPixel3(dest, x, y, getPixel3(source, startX + x, finalY));
+			d_setPixel3(destPx, w, x, y, d_getPixel3(srcPx, srcW, startX + x, finalY));
 		}
 	}
 	__syncthreads();
 }
 
-__global__ void d_clampImage3(Image3 *img){
+__global__ void d_clampImage3(Image3 *img){ //CUDA cock
 	__shared__ uint32_t dim;
 	__shared__ Pixel3 *px;
 
@@ -181,9 +187,11 @@ __global__ void d_clampImage3(Image3 *img){
 	__syncthreads();
 
 	uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
-	px[i].x = d_clamp(px[i].x, 0, 1);
-	px[i].y = d_clamp(px[i].y, 0, 1);
-	px[i].z = d_clamp(px[i].z, 0, 1);
+	if(i < dim){
+		px[i].x = d_clamp(px[i].x, 0, 1);
+		px[i].y = d_clamp(px[i].y, 0, 1);
+		px[i].z = d_clamp(px[i].z, 0, 1);
+	}
 	__syncthreads();
 }
 
@@ -222,23 +230,6 @@ __device__ void d_remap(Image3 * img, const Pixel3 g0, double sigma, double alph
 			double d = (sigma * polynomial) * details + (((mag - sigma) * beta) + sigma) * (1 - details);
 			Pixel3 px = vec3MulC(delta, d, Pixel3);
 			pixels[idx] = vec3Add(g0, px, Pixel3);
-
-			/*if(mag < sigma){ //Details
-				double fraction = mag / sigma;
-				double polynomial = pow(fraction, alpha);
-				if(alpha < 1){ //alpha is one of the entire llf params, so ALL the threads will always take the same branch
-					const double kNoiseLevel = 0.01;
-					double blend = d_smoothstep(kNoiseLevel, 2 * kNoiseLevel, fraction * sigma);
-					polynomial = blend * polynomial + (1 - blend) * fraction;
-				}
-				double d = sigma * polynomial;
-				Pixel3 px = vec3MulC(delta, d, Pixel3);
-				img -> pixels[idx] = vec3Add(g0, px, Pixel3);
-			} else { //Edges
-				double d = ((mag - sigma) * beta) + sigma;
-				Pixel3 px = vec3MulC(delta, d, Pixel3);
-				img -> pixels[idx] = vec3Add(g0, px, Pixel3);
-			}*/
 		}
 	}
 	__syncthreads();

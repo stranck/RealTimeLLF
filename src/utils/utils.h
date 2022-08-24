@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <math.h>
 
+#define dumpMemory(data, len){printBuffer((uint8_t *) data, len); puts(""); fflush(stdout);}
+
 void printBuffer(uint8_t *data, uint32_t len);
 
 int32_t roundfI32(float f);

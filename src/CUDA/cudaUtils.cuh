@@ -44,11 +44,11 @@
     }                                   \
 }
 
-__device__ inline Pixel3 d_getPixel3(Image3 *img, uint32_t x, uint32_t y){
-	return img->pixels[y * img->width + x];
+#define d_getPixel3(pxs, width, x, y){ \
+	pxs[y * width + x] \
 }
-__device__ inline void d_setPixel3(Image3 *img, uint32_t x, uint32_t y, Pixel3 px){
-	img->pixels[y * img->width + x] = px;
+#define d_setPixel3(pxs, width, x, y, px){ \
+	pxs[y * width + x] = px; \
 }
 
 #define KERNEL_DIMENSION 5
