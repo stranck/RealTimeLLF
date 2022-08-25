@@ -10,7 +10,9 @@ typedef struct PyrBuffer PyrBuffer;
 #ifdef CUDA_INCLUDE
 	#include <cuda.h>
 	#include <cuda_runtime.h>
-	#include <cuda/semaphore>
+	#if SYNC_PRIMITIVES_SUPPORTED
+		#include <cuda/semaphore>
+	#endif
 #else
 	#include <semaphore>
 #endif
@@ -18,13 +20,19 @@ typedef struct PyrBuffer PyrBuffer;
 struct NodeBuffer {
 	Pyramid bufferLaplacianPyramid;
 	Pyramid bufferGaussPyramid;
-	NodeBuffer *next;
+	#if SYNC_PRIMITIVES_SUPPORTED
+		NodeBuffer *next;
+	#endif
 };
 
 struct PyrBuffer {
-	cuda::binary_semaphore<cuda::thread_scope_device> managerMutex;
-	cuda::counting_semaphore<cuda::thread_scope_device> availableBuffers;
-	NodeBuffer *first;
+	#if SYNC_PRIMITIVES_SUPPORTED
+		cuda::binary_semaphore<cuda::thread_scope_device> managerMutex;
+		cuda::counting_semaphore<cuda::thread_scope_device> availableBuffers;
+		NodeBuffer *first;
+	#else
+		NodeBuffer el;
+	#endif
 };
 
 __device__ NodeBuffer * d_aquireBuffer(PyrBuffer *buffer);

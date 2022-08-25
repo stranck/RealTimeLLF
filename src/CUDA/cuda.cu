@@ -50,6 +50,7 @@ __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter){
 	const uint32_t originalW = *width, originalH = *height;
 	const uint32_t lcl_width = *width / 2;
+	printf("a\n");
 	if(threadIdx.x == 0){
 		*width = lcl_width;
 		*height /= 2;
@@ -65,11 +66,13 @@ __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width
 	const int32_t  ystart = -1 * rows / 2;
 	Pixel3 *srcPx = source->pixels;
 	Pixel3 *dstPx = dest->pixels;
+	printf("b\n");
 
 	const uint32_t dim = lcl_width * *height; //Small dimensions
 	const uint32_t max = dim / blockDim.x;
 	for(uint32_t li = 0; li <= max; li++){
 		uint32_t idx = li * blockDim.x + threadIdx.x;
+		printf("c %u\n", idx);
 		uint32_t i = (idx % lcl_width) * 2 + startingX, j = (idx / lcl_width) * 2 + startingY;
 		if(i < originalH && j < originalW){ 
 
@@ -96,7 +99,9 @@ __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width
 }
 
 __global__ void gaussianPyramid(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLevels, Kernel d_filter){
+	printf("sdjijdjasd\n");
 	__gaussianPyramid_internal(d_outPyr, d_inImg, nLevels, d_filter);
+	printf("gaussianPyramid done\n");
 }
 __device__ void __gaussianPyramid_internal(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLevels, Kernel d_filter){
 	d_imgcpy3(d_outPyr[0], d_inImg);
@@ -183,10 +188,20 @@ __global__ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Ke
 	__syncthreads();
 }
 
+#if SYNC_PRIMITIVES_SUPPORTED
 __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width, uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, double sigma, double alpha, double beta, PyrBuffer *buffer){
+#else
+__global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width, uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, double sigma, double alpha, double beta, PyrBuffer *buffer, uint32_t exId, uint8_t exDimension){
+#endif
 	__shared__ double lcl_filter[KERNEL_DIMENSION * KERNEL_DIMENSION];
 	Image3 *currentGaussLevel = gaussPyramid[lev];
-	uint32_t x = blockIdx.x, y = blockIdx.y;
+	#if SYNC_PRIMITIVES_SUPPORTED
+		uint32_t x = blockIdx.x, y = blockIdx.y;
+	#else
+		uint32_t exIdx = exId * exDimension + blockIdx.x;
+		if(exIdx >= currentGaussLevel->height * currentGaussLevel->width) return;
+		uint32_t x = exIdx % currentGaussLevel->width, y = exIdx / currentGaussLevel->width;
+	#endif
 
 	int32_t full_res_y = (1 << lev) * y;
 	int32_t roi_y0 = full_res_y - subregionDimension;
@@ -203,6 +218,7 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 	int32_t end_x = min(roi_x1, width);
 	int32_t full_res_roi_x = full_res_x - base_x;
 
+	printf("Copying blur kernel %ux%u\n", x, y);
 	uint32_t dim = KERNEL_DIMENSION * KERNEL_DIMENSION;
 	uint32_t max = dim / blockDim.x;
 	for(uint32_t i = 0; i <= max; i++){
@@ -215,6 +231,7 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 	__shared__ Pyramid bufferLaplacianPyramid, bufferGaussPyramid;
 	__shared__ Pixel3 g0;
 	NodeBuffer *node;
+	printf("Copying blur kernel %ux%u\n", x, y);
 	if(threadIdx.x == 0){
 		node = d_aquireBuffer(buffer);
 		bufferLaplacianPyramid = node->bufferLaplacianPyramid;
@@ -224,12 +241,17 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 	}
 	__syncthreads();
 
+	printf("subimage %ux%u\n", x, y);
 	d_subimage3(bufferLaplacianPyramid[0], img, base_x, end_x, base_y, end_y); //Using bufferLaplacianPyramid[0] as temp buffer
+	printf("remap %ux%u\n", x, y);
 	d_remap(bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
 	uint8_t currentNLevels = lev + 1;
+	printf("remap %ux%u\n", x, y);
 	__gaussianPyramid_internal(bufferGaussPyramid, bufferLaplacianPyramid[0], currentNLevels, lcl_filter);
+	printf("laplacian %ux%u\n", x, y);
 	laplacianPyramid(bufferLaplacianPyramid, bufferGaussPyramid, currentNLevels, lcl_filter);
 
+	printf("pixel copy %ux%u\n", x, y);
 	if(threadIdx.x == 0){
 		Image3 *outLev = outputLaplacian[lev], *crtLev = bufferLaplacianPyramid[lev];
 		d_setPixel3(outLev->pixels, outLev->width, x, y, d_getPixel3(crtLev->pixels, crtLev->width, full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
@@ -243,25 +265,42 @@ __host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, 
 	uint32_t h_width = h_img->width, h_height = h_img->height;
 	h_nLevels = min(h_nLevels, 5);
 	h_nLevels = max(h_nLevels, 3);//int(ceil(std::abs(std::log2(min(width, height)) - 3))) + 2;
+	print("Creating blur kernel");
 	Kernel d_filter = createFilterDevice();
+	print("Creating gauss pyr");
 	Pyramid d_gaussPyramid = createPyramidDevice(h_width, h_height, h_nLevels);
+	print("Creating lapl pyr");
 	Pyramid d_outputLaplacian = createPyramidDevice(h_width, h_height, h_nLevels);
 
+	print("Create buffer device");
 	PyrBuffer *d_buffer = createBufferDevice(h_elementsNo, (3 * ((1 << (h_nLevels + 1)) - 1)), h_nLevels);
 
+	print("makeimage3");
 	Image3 *d_img = makeImage3Device(h_width, h_height);
+	print("copyImg3");
 	copyImg3Host2Device(d_img, h_img);
+	print("FIRST KERNEL");
 	gaussianPyramid<<<1, h_nThreads>>>(d_gaussPyramid, d_img, h_nLevels, d_filter);
 	CHECK(cudaDeviceSynchronize());
 
 	for(uint8_t h_lev = 0; h_lev < h_nLevels; h_lev++){
+		printff("Loop %u\n", h_lev);
 		uint32_t h_layerW, h_layerH;
 		getPyramidDimensionsAtLayer(d_gaussPyramid, h_lev, &h_layerW, &h_layerH);
 		dim3 grid(h_layerW, h_layerH);
 		uint32_t h_subregionDimension = 3 * ((1 << (h_lev + 2)) - 1) / 2;
 
-		__d_llf_internal<<<grid, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, d_img, h_width, h_height, h_lev, h_subregionDimension, d_filter, h_sigma, h_alpha, h_beta, d_buffer);
-		CHECK(cudaDeviceSynchronize());
+		#if SYNC_PRIMITIVES_SUPPORTED
+			__d_llf_internal<<<grid, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, d_img, h_width, h_height, h_lev, h_subregionDimension, d_filter, h_sigma, h_alpha, h_beta, d_buffer);
+			CHECK(cudaDeviceSynchronize());
+		#else
+			uint32_t h_exDim = h_layerW * h_layerH;
+			uint32_t h_max = h_exDim / h_elementsNo;
+			for(uint32_t h_exId = 0; h_exId <= h_max; h_exId++){
+				__d_llf_internal<<<h_elementsNo, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, d_img, h_width, h_height, h_lev, h_subregionDimension, d_filter, h_sigma, h_alpha, h_beta, d_buffer, h_exId, h_elementsNo);
+				CHECK(cudaDeviceSynchronize());
+			}
+		#endif
 	}
 	d_copyPyrLevel<<<1, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, h_nLevels);
 	CHECK(cudaDeviceSynchronize());
@@ -290,7 +329,6 @@ uint32_t getPixelNoPerPyramid(uint8_t nLevels){
 }
 
 int main(){
-	uint32_t asd = 0x0001020304;
 	Image4 *img4 = getStaticImage4();
 	Image3 *img = image4to3(img4);
 	AlphaMap map = getAlphaMap(img4);
@@ -300,6 +338,6 @@ int main(){
 
 	img4 = image3to4AlphaMap(img, map);
 	destroyImage3(&img);
-	printStaticImage4(img4);
+	//printStaticImage4(img4);
 	destroyImage4(&img4);
 }
