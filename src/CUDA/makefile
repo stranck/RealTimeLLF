@@ -1,5 +1,5 @@
 GCC := nvcc
-ARGS := -O0 -lm -arch=sm_70 -g #-dopt off
+ARGS := -O0 -lm -arch=sm_60 -lineinfo -g #-dopt off
 BINFOLDR := ../../bin/
 UTILS := ../utils/
 

@@ -12,6 +12,8 @@ complete : clean all
 .PHONY : clean
 clean :
 	rm -rf bin/
+	rm -f tmp/*
+	$(MAKE) -C $(CUDA) clean
 
 .PHONY : bin
 bin :

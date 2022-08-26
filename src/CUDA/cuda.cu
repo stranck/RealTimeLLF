@@ -49,59 +49,90 @@ __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 
 __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter){
 	const uint32_t originalW = *width, originalH = *height;
-	const uint32_t lcl_width = *width / 2;
-	printf("a\n");
-	if(threadIdx.x == 0){
-		*width = lcl_width;
-		*height /= 2;
-		dest->width = lcl_width;
-		dest->height = *height;
-	}
-	__syncthreads();
-	const uint32_t startingX = originalW & 1;
-	const uint32_t startingY = originalH & 1;
-	const uint8_t  rows = KERNEL_DIMENSION;
-	const uint8_t  cols = KERNEL_DIMENSION;
+	const uint32_t downW = originalW / 2, downH = originalH / 2;
+	//printf("a\n");
+	printf("Addr: *width: 0x%016llx  *height: 0x%016llx  *dW: 0x%016llx  *dH: 0x%016llx\n", width, height, &(dest->width), &(dest->height));
+	printf("Entering downsampleConvolve Tid: %d   orgW: %d   orgH: %d   downW: %d   downH: %d - ptrW: %d   ptrH: %d   dW: %d   dH: %d\n", threadIdx.x, originalW, originalH, downW, downH, *width, *height, dest->width, dest->height);
+	//if(threadIdx.x == 0){
+		*width = downW;
+		*height = downH;
+		dest->width = downW;
+		dest->height = downH;
+	//}
+	//__syncthreads();
+	printf("Resized dimensions: Tid: %d   orgW: %d   orgH: %d   downW: %d   downH: %d - ptrW: %d   ptrH: %d   dW: %d   dH: %d\n", threadIdx.x, originalW, originalH, downW, downH, *width, *height, dest->width, dest->height);
+	const int32_t startingX = originalW & 1;
+	const int32_t startingY = originalH & 1;
+	const int8_t  rows = KERNEL_DIMENSION;
+	const int8_t  cols = KERNEL_DIMENSION;
 	const int32_t  xstart = -1 * cols / 2;
 	const int32_t  ystart = -1 * rows / 2;
 	Pixel3 *srcPx = source->pixels;
 	Pixel3 *dstPx = dest->pixels;
-	printf("b\n");
+	//printf("b\n");
 
-	const uint32_t dim = lcl_width * *height; //Small dimensions
-	const uint32_t max = dim / blockDim.x;
+	/*const int32_t dim = downW * downH; //Small dimensions
+	const int32_t max = dim / blockDim.x;
+	printf("Entering loop Tid: %d\n", threadIdx.x);
 	for(uint32_t li = 0; li <= max; li++){
-		uint32_t idx = li * blockDim.x + threadIdx.x;
-		printf("c %u\n", idx);
-		uint32_t i = (idx % lcl_width) * 2 + startingX, j = (idx / lcl_width) * 2 + startingY;
-		if(i < originalH && j < originalW){ 
+		int32_t idx = li * blockDim.x + threadIdx.x;
+		//printf("c %u\n", idx);
+		int32_t i = (idx % downW) * 2 + startingX, j = (idx / downW) * 2 + startingY;
+		//if(threadIdx.x == 1 && li > 53300) printf("[%d; %d * %d + %d] Starting loop j: %d   i: %d   originalW: %d   originalH: %d   downW: %d   downH: %d\n", idx, li, blockDim.x, threadIdx.x, originalW, originalH, downW, downH);
+		if(i < originalH && j < originalW){ */
+
+	for (uint32_t j = startingY; j < originalH; j += 2) {
+		for (uint32_t i = startingX; i < originalW; i += 2) {
 
 			Pixel3 c = zero3vect;
-			for (int32_t y = 0; y < rows; y++) {
+			for (uint32_t y = 0; y < rows; y++) {
 				int32_t jy = j + (ystart + y) * 2 - startingY;
-				for (int32_t x = 0; x < cols; x++) {
-					int32_t ix = i + (xstart + x) * 2 - startingX;
+				for (uint32_t x = 0; x < cols; x++) {
+					/*int32_t ix = i + (xstart + x) * 2 - startingX;
 
 					int32_t oob = ix >= 0 && ix < originalW && jy >= 0 && jy < originalH;
 					int32_t fi = ix * oob + (i - startingX) * (1 - oob), fj = jy * oob + (j - startingY) * (1 - oob);
 
 					double kern_elem = filter[getKernelPosition(x, y)];
+					//if(threadIdx.x == 1 && li > 53300) printf("[%d; %d * %d + %d] -> Fi: %d   Fj: %d   originalW: %d   originalH: %d   oob: %d   ix: %d   i: %d   startingX: %d   jy: %d   j: %d   startingY: %d\n", idx, li, blockDim.x, threadIdx.x, fi, fj, originalW, originalH, oob, ix, i, startingX, jy, j, startingY);
 					Pixel3 px = d_getPixel3(srcPx, originalW, fi, fj); //srcPx[fj * originalW + fi];
 					c.x += px.x * kern_elem;
 					c.y += px.y * kern_elem;
-					c.z += px.z * kern_elem;
+					c.z += px.z * kern_elem;*/
+
+					int32_t ix = i + (xstart + x) * 2 - startingX;
+
+					if (ix >= 0 && ix < originalW && jy >= 0 && jy < originalH) {
+						double kern_elem = filter[getKernelPosition(x, y)];
+						Pixel3 px = d_getPixel3(srcPx, originalW, ix, jy);
+
+						c.x += px.x * kern_elem;
+						c.y += px.y * kern_elem;
+						c.z += px.z * kern_elem;
+					} else {
+						
+						double kern_elem = filter[getKernelPosition(x, y)];
+						//printf("[%d; %d * %d + %d] -> i: %d  j: %d  sX: %d  sY: %d  orgW: %d  orgH: %d  calc: %d  Addr: 0x%016llx\n", idx, li, blockDim.x, threadIdx.x, i, j, startingX, startingY, originalW, originalH, (j - startingY) * originalW + (i - startingX), srcPx);
+						Pixel3 px = srcPx[(j - startingY) * (originalW) + (i - startingX)]; //d_getPixel3(srcPx, originalW, i - startingX, j - startingY);
+
+						c.x += px.x * kern_elem;
+						c.y += px.y * kern_elem;
+						c.z += px.z * kern_elem;
+					}
 				}
 			}
-			d_setPixel3(dstPx, lcl_width, j / 2, i / 2, c);
+			//if(threadIdx.x == 1 && li > 53300) printf("[%d; %d * %d + %d] <- j: %d   i: %d   j2: %d   i2: %d   originalW: %d   originalH: %d\n", idx, li, blockDim.x, threadIdx.x, j, i, j/2, i/2, originalW, originalH);
+			d_setPixel3(dstPx, downW, i / 2, j / 2, c);
 		}
 	}
+	printf("Exiting loop Tid: %d\n", threadIdx.x);
 	__syncthreads();
 }
 
 __global__ void gaussianPyramid(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLevels, Kernel d_filter){
-	printf("sdjijdjasd\n");
+	printf("Tid: %d\n", threadIdx.x);
 	__gaussianPyramid_internal(d_outPyr, d_inImg, nLevels, d_filter);
-	printf("gaussianPyramid done\n");
+	//printf("gaussianPyramid done\n");
 }
 __device__ void __gaussianPyramid_internal(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLevels, Kernel d_filter){
 	d_imgcpy3(d_outPyr[0], d_inImg);
@@ -230,8 +261,7 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 
 	__shared__ Pyramid bufferLaplacianPyramid, bufferGaussPyramid;
 	__shared__ Pixel3 g0;
-	NodeBuffer *node;
-	printf("Copying blur kernel %ux%u\n", x, y);
+	__shared__ NodeBuffer *node;
 	if(threadIdx.x == 0){
 		node = d_aquireBuffer(buffer);
 		bufferLaplacianPyramid = node->bufferLaplacianPyramid;
@@ -280,10 +310,14 @@ __host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, 
 	print("copyImg3");
 	copyImg3Host2Device(d_img, h_img);
 	print("FIRST KERNEL");
-	gaussianPyramid<<<1, h_nThreads>>>(d_gaussPyramid, d_img, h_nLevels, d_filter);
+	gaussianPyramid<<<1, 1>>>(d_gaussPyramid, d_img, h_nLevels, d_filter);
 	CHECK(cudaDeviceSynchronize());
+	fflush(stdout);
 
-	for(uint8_t h_lev = 0; h_lev < h_nLevels; h_lev++){
+	Image3 *d_blurImg = getImageFromPyramidDevice(d_gaussPyramid, 1);
+	copyImg3Device2Host(h_img, d_blurImg);
+
+	/*for(uint8_t h_lev = 0; h_lev < h_nLevels; h_lev++){
 		printff("Loop %u\n", h_lev);
 		uint32_t h_layerW, h_layerH;
 		getPyramidDimensionsAtLayer(d_gaussPyramid, h_lev, &h_layerW, &h_layerH);
@@ -310,7 +344,7 @@ __host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, 
 	CHECK(cudaDeviceSynchronize());
 
 	copyImg3Device2Host(h_img, d_img);
-
+*/
 	destroyBufferDevice(h_elementsNo, h_nLevels, d_buffer);
 	destroyImage3Device(d_img);
 	destroyPyramidDevice(d_gaussPyramid, h_nLevels);
@@ -338,6 +372,6 @@ int main(){
 
 	img4 = image3to4AlphaMap(img, map);
 	destroyImage3(&img);
-	//printStaticImage4(img4);
+	printStaticImage4(img4);
 	destroyImage4(&img4);
 }
