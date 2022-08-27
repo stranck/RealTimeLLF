@@ -71,18 +71,18 @@ __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width
 	Pixel3 *dstPx = dest->pixels;
 	//printf("b\n");
 
-	/*const int32_t dim = downW * downH; //Small dimensions
+	const int32_t dim = downW * downH; //Small dimensions
 	const int32_t max = dim / blockDim.x;
 	printf("Entering loop Tid: %d\n", threadIdx.x);
 	for(uint32_t li = 0; li <= max; li++){
 		int32_t idx = li * blockDim.x + threadIdx.x;
-		//printf("c %u\n", idx);
 		int32_t i = (idx % downW) * 2 + startingX, j = (idx / downW) * 2 + startingY;
+		//printf("IDX: % 6d            i:% 4d            j:% 4d            im:% 4d            jd:% 4d            downW: %d   downH: %d   orgW: %d   orgH: %d   bool: %u%u\n", idx, i, j, (idx % downW), (idx / downW), downW, downH, originalW, originalH, i < originalH, );
 		//if(threadIdx.x == 1 && li > 53300) printf("[%d; %d * %d + %d] Starting loop j: %d   i: %d   originalW: %d   originalH: %d   downW: %d   downH: %d\n", idx, li, blockDim.x, threadIdx.x, originalW, originalH, downW, downH);
-		if(i < originalH && j < originalW){*/
+		if(i < originalW && j < originalH){
 
-	for (uint32_t j = startingY; j < originalH; j += 2) {
-		for (uint32_t i = startingX; i < originalW; i += 2) {
+	//for (uint32_t j = startingY; j < originalH; j += 2) {
+	//	for (uint32_t i = startingX; i < originalW; i += 2) {
 
 			Pixel3 c = zero3vect;
 			for (uint32_t y = 0; y < rows; y++) {
