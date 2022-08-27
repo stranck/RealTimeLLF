@@ -6,7 +6,7 @@
 
 #define CUDA_INCLUDE __CUDACC__ //had to do this to fix vs code intellisense doing random stuff
 //#define CUDART_VERSION 6000 //Sync primitives are only supported with sm_70 arch... I have a gtx1080 which is sm_60. Sad :(
-#define SYNC_PRIMITIVES_SUPPORTED __CUDA_ARCH__ >= 700
+#define SYNC_PRIMITIVES_SUPPORTED 0 //__CUDA_ARCH__ >= 700
 
 #define MAX_LAYERS 5
 #define MAX_PYR_LAYER 3 * ((1 << (MAX_LAYERS + 2)) - 1)

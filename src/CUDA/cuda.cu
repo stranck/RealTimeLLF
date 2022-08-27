@@ -79,7 +79,7 @@ __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width
 		//printf("c %u\n", idx);
 		int32_t i = (idx % downW) * 2 + startingX, j = (idx / downW) * 2 + startingY;
 		//if(threadIdx.x == 1 && li > 53300) printf("[%d; %d * %d + %d] Starting loop j: %d   i: %d   originalW: %d   originalH: %d   downW: %d   downH: %d\n", idx, li, blockDim.x, threadIdx.x, originalW, originalH, downW, downH);
-		if(i < originalH && j < originalW){ */
+		if(i < originalH && j < originalW){*/
 
 	for (uint32_t j = startingY; j < originalH; j += 2) {
 		for (uint32_t i = startingX; i < originalW; i += 2) {
@@ -88,7 +88,7 @@ __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width
 			for (uint32_t y = 0; y < rows; y++) {
 				int32_t jy = j + (ystart + y) * 2 - startingY;
 				for (uint32_t x = 0; x < cols; x++) {
-					/*int32_t ix = i + (xstart + x) * 2 - startingX;
+					int32_t ix = i + (xstart + x) * 2 - startingX;
 
 					int32_t oob = ix >= 0 && ix < originalW && jy >= 0 && jy < originalH;
 					int32_t fi = ix * oob + (i - startingX) * (1 - oob), fj = jy * oob + (j - startingY) * (1 - oob);
@@ -98,9 +98,9 @@ __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width
 					Pixel3 px = d_getPixel3(srcPx, originalW, fi, fj); //srcPx[fj * originalW + fi];
 					c.x += px.x * kern_elem;
 					c.y += px.y * kern_elem;
-					c.z += px.z * kern_elem;*/
+					c.z += px.z * kern_elem;
 
-					int32_t ix = i + (xstart + x) * 2 - startingX;
+					/*int32_t ix = i + (xstart + x) * 2 - startingX;
 
 					if (ix >= 0 && ix < originalW && jy >= 0 && jy < originalH) {
 						double kern_elem = filter[getKernelPosition(x, y)];
@@ -118,9 +118,10 @@ __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width
 						c.x += px.x * kern_elem;
 						c.y += px.y * kern_elem;
 						c.z += px.z * kern_elem;
-					}
+					}*/
 				}
 			}
+			//c.x = 0; c.y = 0; c.z = 0;
 			//if(threadIdx.x == 1 && li > 53300) printf("[%d; %d * %d + %d] <- j: %d   i: %d   j2: %d   i2: %d   originalW: %d   originalH: %d\n", idx, li, blockDim.x, threadIdx.x, j, i, j/2, i/2, originalW, originalH);
 			d_setPixel3(dstPx, downW, i / 2, j / 2, c);
 		}
@@ -139,10 +140,17 @@ __device__ void __gaussianPyramid_internal(Pyramid d_outPyr, Image3 *d_inImg, ui
 	uint32_t width = d_inImg->width, height = d_inImg->height;
 	//if(0 <= nLevels){ //So it don't need to copy two times the whole img
 		downsampleConvolve(d_outPyr[1], d_inImg, &width, &height, d_filter);
+		//Image3 *h_imgDst = d_outPyr[1];
+		//printf("%f %f %f %f %f\n", h_imgDst->pixels[0].y, h_imgDst->pixels[0].y, h_imgDst->pixels[1].y, h_imgDst->pixels[2].y, h_imgDst->pixels[3].y, h_imgDst->pixels[4].y);
 	//}
 	for(uint8_t i = 1; i < nLevels; i++)
 		downsampleConvolve(d_outPyr[i + 1], d_outPyr[i], &width, &height, d_filter);
 	//No extra synchtreads needed because there already is one at the end of downsampleConvolve 
+}
+__global__ void testt(Pyramid d_outPyr){
+	Image3 *h_imgDst = d_outPyr[1];
+	printf("aaa %f %f %f %f %f\n", h_imgDst->pixels[0].y, h_imgDst->pixels[0].y, h_imgDst->pixels[1].y, h_imgDst->pixels[2].y, h_imgDst->pixels[3].y, h_imgDst->pixels[4].y);
+
 }
 
 __device__ void laplacianPyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Kernel filter){
@@ -312,6 +320,9 @@ __host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, 
 	print("FIRST KERNEL");
 	gaussianPyramid<<<1, 1>>>(d_gaussPyramid, d_img, h_nLevels, d_filter);
 	CHECK(cudaDeviceSynchronize());
+	testt<<<1, 1>>>(d_gaussPyramid);
+	CHECK(cudaDeviceSynchronize());
+
 	fflush(stdout);
 
 	Image3 *d_blurImg = getImageFromPyramidDevice(d_gaussPyramid, 1);
