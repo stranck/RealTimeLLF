@@ -106,14 +106,19 @@ __host__ void copyImg3Host2Device(Image3 *d_imgDst, Image3 *h_imgSrc){
 	h_i.width = h_imgSrc->width;
 	h_i.height = h_imgSrc->height;
 	CHECK(cudaMemcpy(d_imgDst, &h_i, sizeof(Image3), cudaMemcpyHostToDevice));
+	printf("Copying host->dev %d bytes\n", h_imgSrc->width * h_imgSrc->height * sizeof(Pixel3));
 	CHECK(cudaMemcpy(h_i.pixels, h_imgSrc->pixels, h_imgSrc->width * h_imgSrc->height * sizeof(Pixel3), cudaMemcpyHostToDevice));
 }
 __host__ void copyImg3Device2Host(Image3 *h_imgDst, Image3 *d_imgSrc){
 	Image3 h_i;
 	CHECK(cudaMemcpy(&h_i, d_imgSrc, sizeof(Image3), cudaMemcpyDeviceToHost));
+	printf("Dimensions before: %dx%d\n", h_imgDst->width, h_imgDst->height);
 	h_imgDst->width = h_i.width;
 	h_imgDst->height = h_i.height;
-	CHECK(cudaMemcpy(h_imgDst->pixels, h_i.pixels, sizeof(Image3), cudaMemcpyDeviceToHost));
+	size_t h_toCopy = (h_i.width) * (h_i.height) * sizeof(Pixel3);
+	printf("Dimensions after: %dx%d     ToCopy: %d\n", h_imgDst->width, h_imgDst->height, h_toCopy);
+	CHECK(cudaMemcpy(h_imgDst->pixels, h_i.pixels, h_toCopy, cudaMemcpyDeviceToHost)); //1281600
+	printf("first 5 bytes %f %f %f %f %f\n", h_imgDst->pixels[0].y, h_imgDst->pixels[0].y, h_imgDst->pixels[1].y, h_imgDst->pixels[2].y, h_imgDst->pixels[3].y, h_imgDst->pixels[4].y);
 }
 
 __host__ Image3 * getImageFromPyramidDevice(Pyramid d_pyr, uint8_t h_level){
