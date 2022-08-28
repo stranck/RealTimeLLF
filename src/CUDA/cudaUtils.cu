@@ -123,7 +123,7 @@ __host__ void copyImg3Device2Host(Image3 *h_imgDst, Image3 *d_imgSrc){
 
 __host__ Image3 * getImageFromPyramidDevice(Pyramid d_pyr, uint8_t h_level){
 	Pyramid h_pyr = (Pyramid) alloca((h_level + 1) * sizeof(Image3*)); //We just need to copy up to level pointers;
-	printff("getPyramidDimensionsAtLayer: d_pyr 0x%016llx. Params: %u, %u\n", d_pyr, h_level, (h_level + 1) * sizeof(Image3*));
+	//printff("getPyramidDimensionsAtLayer: d_pyr 0x%016llx. Params: %u, %u\n", d_pyr, h_level, (h_level + 1) * sizeof(Image3*));
 	CHECK(cudaMemcpy(h_pyr, d_pyr, (h_level + 1) * sizeof(Image3*), cudaMemcpyDeviceToHost));
 	return h_pyr[h_level];
 }
@@ -161,6 +161,9 @@ __global__ void d_copyPyrLevel(Pyramid dst_pyr, Pyramid src_pyr, uint8_t level){
 	d_imgcpy3(dst_pyr[level], src_pyr[level]);
 } 
 
+__global__ void d_subimage3Test(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY){
+	d_subimage3(dest, source, startX, endX, startY, endY);
+}
 __device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY){
 	uint32_t w = endX - startX;
 	uint32_t h = endY - startY;

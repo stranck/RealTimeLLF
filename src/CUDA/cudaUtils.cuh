@@ -51,6 +51,8 @@
 	_pxs[(_y) * (_width) + (_x)] = _px; \
 }
 
+__global__ void d_subimage3Test(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY);
+
 #define KERNEL_DIMENSION 5
 __host__ Kernel createFilterDevice();
 __host__ void destroyFilterDevice(Kernel d_k);
