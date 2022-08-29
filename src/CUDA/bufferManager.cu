@@ -38,15 +38,15 @@ __device__ void d_releaseBuffer(NodeBuffer *node, PyrBuffer *buffer){
 
 __global__ void __d_createBufferDevice__internal(uint32_t elementsNo, uint32_t pixelSize, uint8_t nLevels, PyrBuffer *buff){
 	#if SYNC_PRIMITIVES_SUPPORTED
-		printf("pre release");
-		buff->managerMutex.release();
-		printf("pre release");
-		//buff->availableBuffers.counting_semaphore();
+ 
 		buff->first = NULL;
 	#endif
 
 	for(uint32_t i = 0; i < elementsNo; i++){
+		printf("\n__d_createBufferDevice__internal: Adding pyramids at buffer address 0x%012llx    [% 3d]\n", &buff[i], i);
+		printf("-- LAPL:\n");
 		Pyramid lapl = d_createPyramid(pixelSize, pixelSize, nLevels);
+		printf("-- GAUS:\n");
 		Pyramid gauss = d_createPyramid(pixelSize, pixelSize, nLevels);
 
 		#if SYNC_PRIMITIVES_SUPPORTED
@@ -70,7 +70,9 @@ __host__ PyrBuffer * createBufferDevice(uint32_t h_elementsNo, uint32_t h_pixelS
 	#else
 		CHECK(cudaMalloc((void**) &d_buff, h_elementsNo * sizeof(PyrBuffer)));
 	#endif
+	printff("createBufferDevice: Dimensions %03dx%03d @ %d levels [%d els]    Buffer address: 0x%012llx\n", h_pixelSize, h_pixelSize, h_nLevels, h_elementsNo, d_buff);
 	__d_createBufferDevice__internal<<<1, 1>>>(h_elementsNo, h_pixelSize, h_nLevels, d_buff);
+	fflush(stdout);
 	CHECK(cudaDeviceSynchronize());
 	return d_buff;
 }

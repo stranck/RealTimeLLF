@@ -17,6 +17,7 @@ typedef struct {
 typedef struct {
 	uint32_t height;
 	uint32_t width;
+	//uint32_t originalW; uint32_t originalH;
 	Pixel3 *pixels;
 } Image3;
 

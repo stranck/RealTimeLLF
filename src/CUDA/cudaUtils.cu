@@ -25,6 +25,7 @@ __device__ Pyramid d_createPyramid(uint32_t width, uint32_t height, uint8_t nLev
 	nLevels++; //Pyramids has one more layer!
 	Pyramid p;
 	cudaMalloc(&p, nLevels * sizeof(Image3*));
+	printf("d_createPyramid: Dimensions: %03dx%03d @ %d levels    Pyramid at 0x%012llx\n", width, height, nLevels, p);
 	for(uint8_t i = 0; i < nLevels; i++){
 		p[i] = d_makeImage3(width, height);
 		width = width / 2 + (width & 1);
@@ -68,14 +69,19 @@ __host__ void destroyPyramidDevice(Pyramid d_pyr, uint8_t h_nLevels){
 }
 
 __device__ Image3 * d_makeImage3(uint32_t width, uint32_t height){
-	Image3 *i;
-	Pixel3 *img;
-	cudaMalloc(&img, width * height * sizeof(Pixel3));
-	cudaMalloc(&i, sizeof(Image3));
-	i -> width = width;
-	i -> height = height;
-	i -> pixels = img;
-	return i;
+	if(blockIdx.x == 0 && threadIdx.x == 0){
+		Image3 *i;
+		Pixel3 *img;
+		cudaError_t errImg = cudaMalloc(&i, sizeof(Image3));
+		cudaError_t errPx = cudaMalloc(&img, width * height * sizeof(Pixel3));
+		i -> width = width;
+		i -> height = height;
+		//i->originalW = width; i->originalH = height;
+		i -> pixels = img;
+		printf("d_makeImage3: Dimensions: % 3dx% 3d    Pixels at 0x%012llx    Image3 at 0x%012llx    Error img: %s     Error pxs: %s\n", width, height, i, img, cudaGetErrorString(errImg), cudaGetErrorString(errPx));
+		if((long)img == 0x00110594d320) printf("DIOCANE detected\n");
+		return i;
+	}
 }
 __host__ Image3 * makeImage3Device(uint32_t width, uint32_t height){
 	Pixel3 *d_img;
@@ -83,6 +89,7 @@ __host__ Image3 * makeImage3Device(uint32_t width, uint32_t height){
 	Image3 h_i;
 	h_i.width = width;
 	h_i.height = height;
+	//h_i.originalW = width; h_i.originalH = height;
 	h_i.pixels = d_img;
 
 	Image3 *d_i;
@@ -152,10 +159,12 @@ __device__ void d_imgcpy3(Image3 *d_dest, Image3 *d_source){
 	uint32_t max = dim / blockDim.x;
 	for(uint32_t i = 0; i <= max; i++){
 		uint32_t idx = i * blockDim.x + threadIdx.x;
+		//if(blockIdx.x == 0  && d_dest->width < 800) printf("imgcpy3 idx %d %dx%d ORG: %dx%d addr 0x%012llx\n", idx, d_dest->width, d_dest->height, d_dest->originalW, d_dest->originalH, &d_destPxs[idx]);
 		if(idx < dim)
 			d_destPxs[idx] = d_srcPxs[idx];
 	}
 	__syncthreads();
+	//memcpy(d_destPxs, d_srcPxs, dim * sizeof(Pixel3));
 }
 __global__ void d_copyPyrLevel(Pyramid dst_pyr, Pyramid src_pyr, uint8_t level){
 	d_imgcpy3(dst_pyr[level], src_pyr[level]);
