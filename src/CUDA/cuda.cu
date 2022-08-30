@@ -10,7 +10,7 @@ __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 		dest->width = uppedW;
 		dest->height = uppedH;
 	}
-	__syncthreads();
+	//__syncthreads();
 	const uint8_t  rows = KERNEL_DIMENSION;
 	const uint8_t  cols = KERNEL_DIMENSION;
 	const int32_t  xstart = -1 * cols / 2;
@@ -167,13 +167,17 @@ __device__ void laplacianPyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t n
 		for(uint32_t li = 0; li <= max; li++){
 			uint32_t idx = li * blockDim.x + threadIdx.x;
 			if(idx < dim){
-				Pixel3 ups = upsampledPx[idx];
+				uint32_t x = idx % xEnd, y = idx / xEnd;
+				Pixel3 ups = d_getPixel3(upsampledPx, upsampled->width, x, y);
+				Pixel3 crr = d_getPixel3(currentPx, current->width, x, y);
+				d_setPixel3(upsampledPx, upsampled->width, x, y, vec3Sub(crr, ups, Pixel3));
+				/*Pixel3 ups = upsampledPx[idx];
 				Pixel3 crr = currentPx[idx];
 
-				upsampledPx[idx] = vec3Sub(crr, ups, Pixel3);
+				upsampledPx[idx] = vec3Sub(crr, ups, Pixel3);*/
 			}
 		}
-		__syncthreads();
+		//__syncthreads();
 	}
 	//No extra synchtreads needed
 	d_imgcpy3(laplacian[nLevels], tempGauss[nLevels]);
@@ -230,11 +234,35 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 #else
 __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width, uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, double sigma, double alpha, double beta, PyrBuffer *buffer, uint8_t elementsNo){
 #endif
+	__shared__ Pyramid bufferLaplacianPyramid, bufferGaussPyramid;
+	__shared__ Pixel3 g0;
+	__shared__ NodeBuffer *node;
 	__shared__ double lcl_filter[KERNEL_DIMENSION * KERNEL_DIMENSION];
+
+	//printf("Copying blur kernel %ux%u\n", x, y);
+	uint32_t dim = KERNEL_DIMENSION * KERNEL_DIMENSION;
+	uint32_t max = dim / blockDim.x;
+	for(uint32_t i = 0; i <= max; i++){
+		uint32_t idx = i * blockDim.x + threadIdx.x;
+		if(idx < dim)
+			lcl_filter[idx] = filter[idx];
+	}
+	__syncthreads();
+
 	Image3 *currentGaussLevel = gaussPyramid[lev];
+	Image3 *outLev, *crtLev;
+
 	#if SYNC_PRIMITIVES_SUPPORTED
 		uint32_t x = blockIdx.x, y = blockIdx.y;
 	#else
+		if(threadIdx.x == 0){
+			node = d_aquireBuffer(buffer);
+			bufferLaplacianPyramid = node->bufferLaplacianPyramid;
+			bufferGaussPyramid = node->bufferGaussPyramid;
+			outLev = outputLaplacian[lev];
+			crtLev = bufferLaplacianPyramid[lev];
+		}
+		
 		uint32_t currentW = currentGaussLevel->width, currentH = currentGaussLevel->height;
 		uint32_t exDim = currentW * currentH;
 		uint32_t exMax = exDim / elementsNo;
@@ -260,23 +288,14 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 	int32_t end_x = min(roi_x1, width);
 	int32_t full_res_roi_x = full_res_x - base_x;
 
-	//printf("Copying blur kernel %ux%u\n", x, y);
-	uint32_t dim = KERNEL_DIMENSION * KERNEL_DIMENSION;
-	uint32_t max = dim / blockDim.x;
-	for(uint32_t i = 0; i <= max; i++){
-		uint32_t idx = i * blockDim.x + threadIdx.x;
-		if(idx < dim)
-			lcl_filter[idx] = filter[idx];
-	}
-	__syncthreads();
-
-	__shared__ Pyramid bufferLaplacianPyramid, bufferGaussPyramid;
-	__shared__ Pixel3 g0;
-	__shared__ NodeBuffer *node;
 	if(threadIdx.x == 0){
-		node = d_aquireBuffer(buffer);
-		bufferLaplacianPyramid = node->bufferLaplacianPyramid;
-		bufferGaussPyramid = node->bufferGaussPyramid;
+		#if SYNC_PRIMITIVES_SUPPORTED
+			node = d_aquireBuffer(buffer);
+			bufferLaplacianPyramid = node->bufferLaplacianPyramid;
+			bufferGaussPyramid = node->bufferGaussPyramid;
+			outLev = outputLaplacian[lev];
+			crtLev = bufferLaplacianPyramid[lev];
+		#endif 
 
 		g0 = d_getPixel3(currentGaussLevel->pixels, currentGaussLevel->width, x, y);
 	}
@@ -295,7 +314,6 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 
 	//printf("pixel copy %ux%u\n", x, y);
 	if(threadIdx.x == 0){
-		Image3 *outLev = outputLaplacian[lev], *crtLev = bufferLaplacianPyramid[lev];
 		d_setPixel3(outLev->pixels, outLev->width, x, y, d_getPixel3(crtLev->pixels, crtLev->width, full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
 		
 		d_releaseBuffer(node, buffer);
@@ -394,7 +412,7 @@ int main(){
 	AlphaMap map = getAlphaMap(img4);
 	destroyImage4(&img4);
 
-	llf(img, 0.35, 0.4, 5, 3, 649 255);
+	llf(img, 0.35, 0.4, 5, 3, 640, 255);
 
 	img4 = image3to4AlphaMap(img, map);
 	destroyImage3(&img);
