@@ -2,7 +2,7 @@
 
 #include "../utils/structs.h"
 
-void remap(Image3 * img, Pixel3 g0, double sigma, double alpha, double beta);
+void remap(Image3 * img, Pixel3 g0, float sigma, float alpha, float beta);
 
 #define KERNEL_DIMENSION 5
 #define getKernelPosition(x, y)({x * KERNEL_DIMENSION + y;})

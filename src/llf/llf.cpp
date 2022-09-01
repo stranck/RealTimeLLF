@@ -51,7 +51,7 @@ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t 
 					int32_t ix = i + (xstart + x) * 2 - startingX;
 
 					if (ix >= 0 && ix < originalW && jy >= 0 && jy < originalH) {
-						double kern_elem = filter[getKernelPosition(x, y)];
+						float kern_elem = filter[getKernelPosition(x, y)];
 						Pixel3 px = *getPixel3(source, ix, jy);
 
 						c.x += px.x * kern_elem;
@@ -59,7 +59,7 @@ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t 
 						c.z += px.z * kern_elem;
 					} else {
 						
-						double kern_elem = filter[getKernelPosition(x, y)];
+						float kern_elem = filter[getKernelPosition(x, y)];
 						Pixel3 px = *getPixel3(source, i - startingX, j - startingY);
 
 						c.x += px.x * kern_elem;
@@ -114,14 +114,14 @@ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 				for (uint32_t x = 0; x < cols; x++) {
                     int32_t ix = (i + xstart + x) / 2;
                     if (ix >= 0 && ix < smallWidth && jy >= 0 && jy < smallHeight) {
-						double kern_elem = kernel[getKernelPosition(x, y)];
+						float kern_elem = kernel[getKernelPosition(x, y)];
 						Pixel3 px = *getPixel3(source, ix, jy);
 
 						c.x += px.x * kern_elem;
 						c.y += px.y * kern_elem;
 						c.z += px.z * kern_elem;
 					} else {
-						double kern_elem = kernel[getKernelPosition(x, y)];
+						float kern_elem = kernel[getKernelPosition(x, y)];
 						Pixel3 px = *getPixel3(source, i / 2, j / 2);
 
 						c.x += px.x * kern_elem;
@@ -188,7 +188,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 		destPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
 }
 
-void llf(Image3 *img, double sigma, double alpha, double beta, uint8_t nLevels){
+void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels){
 	uint32_t width = img->width, height = img->height;
 	nLevels = min(nLevels, 5);
 	nLevels = max(nLevels, 3);//int(ceil(std::abs(std::log2(min(width, height)) - 3))) + 2;

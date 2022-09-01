@@ -9,29 +9,29 @@
 #include <stdio.h>
 #include <math.h>
 
-void remap(Image3 * img, const Pixel3 g0, double sigma, double alpha, double beta){
+void remap(Image3 * img, const Pixel3 g0, float sigma, float alpha, float beta){
 	uint32_t size = img -> width * img -> height;
 	Pixel3 *pixels = img -> pixels;
 	for(int i = 0; i < size; i++){
 		Pixel3 delta = vec3Sub(pixels[i], g0, Pixel3);
-		double mag = sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+		float mag = sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
 		if(mag > 1e-10) {
 			delta = vec3DivC(delta, mag, Pixel3);
 		}
 
 		if(mag < sigma){ //Details
-			double fraction = mag / sigma;
-			double polynomial = pow(fraction, alpha);
+			float fraction = mag / sigma;
+			float polynomial = pow(fraction, alpha);
 			if(alpha < 1){
-				const double kNoiseLevel = 0.01;
-				double blend = smoothstep(kNoiseLevel, 2 * kNoiseLevel, fraction * sigma);
+				const float kNoiseLevel = 0.01;
+				float blend = smoothstep(kNoiseLevel, 2 * kNoiseLevel, fraction * sigma);
 				polynomial = blend * polynomial + (1 - blend) * fraction;
 			}
-			double d = sigma * polynomial;
+			float d = sigma * polynomial;
 			Pixel3 px = vec3MulC(delta, d, Pixel3);
 			img -> pixels[i] = vec3Add(g0, px, Pixel3);
 		} else { //Edges
-			double d = ((mag - sigma) * beta) + sigma;
+			float d = ((mag - sigma) * beta) + sigma;
 			Pixel3 px = vec3MulC(delta, d, Pixel3);
 			img -> pixels[i] = vec3Add(g0, px, Pixel3);
 		}
@@ -39,8 +39,8 @@ void remap(Image3 * img, const Pixel3 g0, double sigma, double alpha, double bet
 }
 
 Kernel createFilter(){
-	const double params[KERNEL_DIMENSION] = {0.05, 0.25, 0.4, 0.25, 0.05};
-	Kernel filter = (Kernel) malloc(KERNEL_DIMENSION * KERNEL_DIMENSION * sizeof(double));
+	const float params[KERNEL_DIMENSION] = {0.05, 0.25, 0.4, 0.25, 0.05};
+	Kernel filter = (Kernel) malloc(KERNEL_DIMENSION * KERNEL_DIMENSION * sizeof(float));
 
 	for(uint8_t i = 0; i < KERNEL_DIMENSION; i++){
 		for(uint8_t j = 0; j < KERNEL_DIMENSION; j++){
@@ -87,14 +87,14 @@ void convolve(Image3 *dest, Image3 *source, Kernel kernel) {
 				for (uint32_t x = 0; x < cols; x++) {
                     int32_t ix = i + xstart + x;
                     if (ix >= 0 && ix < dest->width && jy >= 0 && jy < dest->height) {
-						double kern_elem = kernel[getKernelPosition(x, y)];
+						float kern_elem = kernel[getKernelPosition(x, y)];
 						Pixel3 px = *getPixel3(source, ix, jy);
 
 						c.x += px.x * kern_elem;
 						c.y += px.y * kern_elem;
 						c.z += px.z * kern_elem;
 					} else {
-						double kern_elem = kernel[getKernelPosition(x, y)];
+						float kern_elem = kernel[getKernelPosition(x, y)];
 						Pixel3 px = *getPixel3(source, i, j);
 
 						c.x += px.x * kern_elem;

@@ -84,7 +84,7 @@ Image3 * image4to3(Image4 *img){
 	}
 	return ret;
 }
-Image4 * image3to4FixedAlpha(Image3 *img, double alpha){
+Image4 * image3to4FixedAlpha(Image3 *img, float alpha){
 	Image4 *ret = makeImage4(img -> width, img -> height);
 	uint32_t dimension = img->width * img->height;
 	for(uint32_t i = 0; i < dimension; i++){

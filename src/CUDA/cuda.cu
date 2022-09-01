@@ -2,7 +2,7 @@
 
 #include "../utils/test/testimage.h"
 #include <sys/time.h>
-/*
+
 __device__ void upsampleConvolve_fast(Image3 *dest, Image3 *source, Kernel kernel, Pixel3 *ds_upsampled){
 	uint32_t smallWidth = source->width, smallHeight = source->height;
 	uint32_t uppedW = smallWidth << 1;
@@ -46,7 +46,7 @@ __device__ void upsampleConvolve_fast(Image3 *dest, Image3 *source, Kernel kerne
 					int32_t oob = ix >= 0 && ix < smallWidth && jy >= 0 && jy < smallHeight;
 					int32_t fi = ix * oob + (i / 2) * (1 - oob), fj = jy * oob + (j / 2) * (1 - oob);
 
-					double kern_elem = kernel[getKernelPosition(x, y)];
+					float kern_elem = kernel[getKernelPosition(x, y)];
 					Pixel3 px = d_getPixel3(ds_upsampled, smallWidth, fi, fj); //ds_upsampled[fj * uppedW + fi]; //*getPixel3(source, ix, jy);
 					c.x += px.x * kern_elem;
 					c.y += px.y * kern_elem;
@@ -138,7 +138,7 @@ __device__ void downsampleConvolve_fast(Image3 *dest, Image3 *source, uint32_t *
 					int32_t oob = ix >= 0 && ix < downW && jy >= 0 && jy < downH;
 					int32_t fi = ix * oob + i * (1 - oob), fj = jy * oob + j * (1 - oob);
 
-					double kern_elem = filter[getKernelPosition(x, y)];
+					float kern_elem = filter[getKernelPosition(x, y)];
 					Pixel3 px = d_getPixel3(ds_downsampled, downW, fi, fj); //ds_downsampled[fj * lcl_width + fi]; //*getPixel3(source, fx, fj);
 					c.x += px.x * kern_elem;
 					c.y += px.y * kern_elem;
@@ -165,7 +165,7 @@ __global__ void gaussianPyramid_fastTest(Pyramid d_outPyr, Image3 *d_inImg, uint
 	__shared__ Pixel3 convolveWorkingBuffer[MAX_PYR_LAYER * MAX_PYR_LAYER];
 	gaussianPyramid_fast(d_outPyr, d_inImg, nLevels, d_filter, convolveWorkingBuffer);
 }
-*/
+
 __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 	uint32_t smallWidth = source->width, smallHeight = source->height;
 	uint32_t uppedW = smallWidth << 1;
@@ -198,7 +198,7 @@ __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 					int32_t oob = ix >= 0 && ix < smallWidth && jy >= 0 && jy < smallHeight;
 					int32_t fi = ix * oob + (i / 2) * (1 - oob), fj = jy * oob + (j / 2) * (1 - oob);
 
-					double kern_elem = kernel[getKernelPosition(x, y)];
+					float kern_elem = kernel[getKernelPosition(x, y)];
 					Pixel3 px = d_getPixel3(srcPx, smallWidth, fi, fj); //srcPx[fj * smallWidth + fi];
 					c.x += px.x * kern_elem;
 					c.y += px.y * kern_elem;
@@ -257,7 +257,7 @@ __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width
 					int32_t oob = ix >= 0 && ix < originalW && jy >= 0 && jy < originalH;
 					int32_t fi = ix * oob + (i - startingX) * (1 - oob), fj = jy * oob + (j - startingY) * (1 - oob);
 
-					double kern_elem = filter[getKernelPosition(x, y)];
+					float kern_elem = filter[getKernelPosition(x, y)];
 					//if(threadIdx.x == 1 && li > 53300) printf("[%d; %d * %d + %d] -> Fi: %d   Fj: %d   originalW: %d   originalH: %d   oob: %d   ix: %d   i: %d   startingX: %d   jy: %d   j: %d   startingY: %d\n", idx, li, blockDim.x, threadIdx.x, fi, fj, originalW, originalH, oob, ix, i, startingX, jy, j, startingY);
 					Pixel3 px = d_getPixel3(srcPx, originalW, fi, fj); //srcPx[fj * originalW + fi];
 					c.x += px.x * kern_elem;
@@ -267,7 +267,7 @@ __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width
 					/*int32_t ix = i + (xstart + x) * 2 - startingX;
 
 					if (ix >= 0 && ix < originalW && jy >= 0 && jy < originalH) {
-						double kern_elem = filter[getKernelPosition(x, y)];
+						float kern_elem = filter[getKernelPosition(x, y)];
 						Pixel3 px = d_getPixel3(srcPx, originalW, ix, jy);
 
 						c.x += px.x * kern_elem;
@@ -275,7 +275,7 @@ __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width
 						c.z += px.z * kern_elem;
 					} else {
 						
-						double kern_elem = filter[getKernelPosition(x, y)];
+						float kern_elem = filter[getKernelPosition(x, y)];
 						//printf("[%d; %d * %d + %d] -> i: %d  j: %d  sX: %d  sY: %d  orgW: %d  orgH: %d  calc: %d  Addr: 0x%016llx\n", idx, li, blockDim.x, threadIdx.x, i, j, startingX, startingY, originalW, originalH, (j - startingY) * originalW + (i - startingX), srcPx);
 						Pixel3 px = srcPx[(j - startingY) * (originalW) + (i - startingX)]; //d_getPixel3(srcPx, originalW, i - startingX, j - startingY);
 
@@ -394,15 +394,15 @@ __global__ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Ke
 }
 
 #if SYNC_PRIMITIVES_SUPPORTED
-__global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width, uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, double sigma, double alpha, double beta, PyrBuffer *buffer){
+__global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width, uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, float sigma, float alpha, float beta, PyrBuffer *buffer){
 #else
-__global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width, uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, double sigma, double alpha, double beta, PyrBuffer *buffer, uint16_t elementsNo){
+__global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width, uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, float sigma, float alpha, float beta, PyrBuffer *buffer, uint16_t elementsNo){
 #endif
 	__shared__ Pyramid bufferLaplacianPyramid, bufferGaussPyramid;
 	__shared__ Pixel3 g0;
 	__shared__ NodeBuffer *node;
 	__shared__ float lcl_filter[KERNEL_DIMENSION * KERNEL_DIMENSION];
-	//__shared__ Pixel3 convolveWorkingBuffer[MAX_PYR_LAYER * MAX_PYR_LAYER];
+	__shared__ Pixel3 convolveWorkingBuffer[MAX_PYR_LAYER * MAX_PYR_LAYER];
 
 	//printf("Copying blur kernel %ux%u\n", x, y);
 	uint32_t dim = KERNEL_DIMENSION * KERNEL_DIMENSION;
@@ -474,11 +474,11 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 	d_remap(bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
 	uint8_t currentNLevels = lev + 1;
 	//printf("remap %ux%u\n", x, y);
-	//gaussianPyramid_fast(bufferGaussPyramid, bufferLaplacianPyramid[0], currentNLevels, lcl_filter, convolveWorkingBuffer);
-	__gaussianPyramid_internal(bufferGaussPyramid, bufferLaplacianPyramid[0], currentNLevels, lcl_filter);
+	gaussianPyramid_fast(bufferGaussPyramid, bufferLaplacianPyramid[0], currentNLevels, lcl_filter, convolveWorkingBuffer);
+	//__gaussianPyramid_internal(bufferGaussPyramid, bufferLaplacianPyramid[0], currentNLevels, lcl_filter);
 	//printf("laplacian %ux%u\n", x, y);
-	//laplacianPyramid_fast(bufferLaplacianPyramid, bufferGaussPyramid, currentNLevels, lcl_filter, convolveWorkingBuffer);
-	laplacianPyramid(bufferLaplacianPyramid, bufferGaussPyramid, currentNLevels, lcl_filter);
+	laplacianPyramid_fast(bufferLaplacianPyramid, bufferGaussPyramid, currentNLevels, lcl_filter, convolveWorkingBuffer);
+	//laplacianPyramid(bufferLaplacianPyramid, bufferGaussPyramid, currentNLevels, lcl_filter);
 
 	//printf("pixel copy %ux%u\n", x, y);
 	if(threadIdx.x == 0){
@@ -493,7 +493,7 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 	#endif
 }
 
-__host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, uint8_t h_nLevels, uint32_t h_nThreads, uint32_t h_elementsNo){
+__host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uint8_t h_nLevels, uint32_t h_nThreads, uint32_t h_elementsNo){
 
 	size_t rsize = 1024ULL*1024ULL*1024ULL*4ULL;  // allocate 4GB
 	CHECK(cudaDeviceSetLimit(cudaLimitMallocHeapSize, rsize));
@@ -601,7 +601,7 @@ int main(){
 	AlphaMap map = getAlphaMap(img4);
 	destroyImage4(&img4);
 
-	llf(img, 0.35, 0.4, 5, 3, 640, 255);
+	llf(img, 0.35, 0.4, 5, 3, 640, 512);
 
 	img4 = image3to4AlphaMap(img, map);
 	destroyImage3(&img);

@@ -2,8 +2,8 @@
 
 
 __host__ Kernel createFilterDevice(){
-	const double params[KERNEL_DIMENSION] = {0.05, 0.25, 0.4, 0.25, 0.05};
-	double h_filter[KERNEL_DIMENSION * KERNEL_DIMENSION];
+	const float params[KERNEL_DIMENSION] = {0.05, 0.25, 0.4, 0.25, 0.05};
+	float h_filter[KERNEL_DIMENSION * KERNEL_DIMENSION];
 
 	for(uint8_t i = 0; i < KERNEL_DIMENSION; i++){
 		for(uint8_t j = 0; j < KERNEL_DIMENSION; j++){
@@ -12,9 +12,9 @@ __host__ Kernel createFilterDevice(){
 	}
 
 	Kernel d_filter;
-	CHECK(cudaMalloc((void**) &d_filter, KERNEL_DIMENSION * KERNEL_DIMENSION * sizeof(double)));
+	CHECK(cudaMalloc((void**) &d_filter, KERNEL_DIMENSION * KERNEL_DIMENSION * sizeof(float)));
 	printff("D_FILTER ADDR: 0x%016llx\n", d_filter);
-	CHECK(cudaMemcpy(d_filter, h_filter, KERNEL_DIMENSION * KERNEL_DIMENSION * sizeof(double), cudaMemcpyHostToDevice));
+	CHECK(cudaMemcpy(d_filter, h_filter, KERNEL_DIMENSION * KERNEL_DIMENSION * sizeof(float), cudaMemcpyHostToDevice));
 	return d_filter;
 }
 __host__ void destroyFilterDevice(Kernel d_k){
@@ -216,19 +216,19 @@ __global__ void d_clampImage3(Image3 *img){ //CUDA cock
 	__syncthreads();
 }
 
-__device__ double d_clamp(double a, double min_, double max_) {
+__device__ float d_clamp(float a, float min_, float max_) {
 	int minFlag = a < min_;
 	int maxFlag = a > max_;
 	int flag = minFlag + maxFlag;
 	//if(flag > 1) flag = 1; //no way they are both true at the same time IF THE PARAMS ARE CORRECT :<
 	return a * (1 - flag) + min_ * minFlag + max_ * maxFlag;
 }
-__device__ double d_smoothstep(double a, double b, double u) {
-	double t = d_clamp((u - a) / (b - a), 0.0, 1.0);
+__device__ float d_smoothstep(float a, float b, float u) {
+	float t = d_clamp((u - a) / (b - a), 0.0, 1.0);
 	return t * t * (3 - 2 * t);
 }
 
-__device__ void d_remap(Image3 * img, const Pixel3 g0, double sigma, double alpha, double beta){
+__device__ void d_remap(Image3 * img, const Pixel3 g0, float sigma, float alpha, float beta){
 	uint32_t dim = img -> width * img -> height;
 	uint32_t max = dim / blockDim.x;
 	Pixel3 *pixels = img -> pixels;
@@ -237,18 +237,18 @@ __device__ void d_remap(Image3 * img, const Pixel3 g0, double sigma, double alph
 		if(idx < dim){
 
 			Pixel3 delta = vec3Sub(pixels[idx], g0, Pixel3);
-			double mag = sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+			float mag = sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
 			if(mag > 1e-10) delta = vec3DivC(delta, mag, Pixel3);
 
 			int details = mag < sigma;
-			double fraction = mag / sigma;
-			double polynomial = pow(fraction, alpha);
+			float fraction = mag / sigma;
+			float polynomial = pow(fraction, alpha);
 			if(alpha < 1){ //alpha is one of the entire llf params, so ALL the threads will always take the same branch
-				const double kNoiseLevel = 0.01;
-				double blend = d_smoothstep(kNoiseLevel, 2 * kNoiseLevel, fraction * sigma);
+				const float kNoiseLevel = 0.01;
+				float blend = d_smoothstep(kNoiseLevel, 2 * kNoiseLevel, fraction * sigma);
 				polynomial = blend * polynomial + (1 - blend) * fraction;
 			}
-			double d = (sigma * polynomial) * details + (((mag - sigma) * beta) + sigma) * (1 - details);
+			float d = (sigma * polynomial) * details + (((mag - sigma) * beta) + sigma) * (1 - details);
 			Pixel3 px = vec3MulC(delta, d, Pixel3);
 			pixels[idx] = vec3Add(g0, px, Pixel3);
 		}

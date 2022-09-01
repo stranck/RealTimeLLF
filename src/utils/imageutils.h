@@ -33,7 +33,7 @@ inline void setPixel3Vec(Image3 *img, Vec2u32 v, Pixel3 *px){
 
 AlphaMap getAlphaMap(Image4 *img);
 Image3 * image4to3(Image4 *img);
-Image4 * image3to4FixedAlpha(Image3 *img, double alpha);
+Image4 * image3to4FixedAlpha(Image3 *img, float alpha);
 Image4 * image3to4AlphaMap(Image3 *img, AlphaMap alphaMap);
 
 void subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY);
