@@ -20,11 +20,11 @@ bin :
 	mkdir -p bin
 
 .PHONY : openmp
-openmp : bin
+openmp : testimage bin
 	$(MAKE) -C $(OPEN_MP)
 
 .PHONY : cuda
-cuda : bin
+cuda : testimage bin
 	$(MAKE) -C $(CUDA)
 
 .PHONY : llf

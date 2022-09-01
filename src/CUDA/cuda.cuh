@@ -8,8 +8,8 @@
 //#define CUDART_VERSION 6000 //Sync primitives are only supported with sm_70 arch... I have a gtx1080 which is sm_60. Sad :(
 #define SYNC_PRIMITIVES_SUPPORTED __CUDA_ARCH__ >= 700
 
-#define MAX_LAYERS 5
-#define MAX_PYR_LAYER 3 * ((1 << (MAX_LAYERS + 2)) - 1)
+#define MAX_LAYERS 3
+#define MAX_PYR_LAYER 3 * ((1 << (MAX_LAYERS + 1)) - 1)
 
 #include "../utils/imageutils.h"
 #include "../utils/extramath.h"
@@ -28,6 +28,10 @@
 	#include <cuda_runtime.h>
 #endif
 
+/*__device__ void upsampleConvolve_fast(Image3 *dest, Image3 *source, Kernel kernel, Pixel3 *ds_upsampled);
+__device__ void laplacianPyramid_fast(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Kernel filter, Pixel3 *ds_upsampled);
+__device__ void downsampleConvolve_fast(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter, Pixel3 *ds_downsampled);
+__device__ void gaussianPyramid_fast(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLevels, Kernel d_filter, Pixel3 *ds_downsampled);*/
 __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel);
 __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter);
 __device__ void __gaussianPyramid_internal(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLevels, Kernel d_filter);

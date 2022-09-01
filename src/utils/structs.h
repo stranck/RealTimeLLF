@@ -6,7 +6,7 @@
 typedef Vec4f Pixel4;
 typedef Vec3f Pixel3;
 typedef uint8_t* AlphaMap;
-typedef double* Kernel;
+typedef float* Kernel;
 
 
 typedef struct {
