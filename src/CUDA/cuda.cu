@@ -3,16 +3,19 @@
 #include "../utils/test/testimage.h"
 #include <sys/time.h>
 
-__device__ void upsampleConvolve_fast(Image3 *dest, Image3 *source, Kernel kernel, Pixel3 *ds_upsampled){
+__device__ void upsampleConvolve_fast(Image3 *dest, Image3 *source, Image3 *currentGauss, Kernel kernel, Pixel3 *ds_upsampled){
 	uint32_t smallWidth = source->width, smallHeight = source->height;
 	uint32_t uppedW = smallWidth << 1;
 	uint32_t uppedH = smallHeight << 1;
-	Pixel3 *destPx = dest->pixels, *srcPx = source->pixels;
+	uint32_t currentGaussW = currentGauss->width;
+	uint32_t yEnd = min(currentGauss->height, uppedH);
+	Pixel3 *destPx = dest->pixels, *srcPx = source->pixels, *crtGssPx = currentGauss->pixels;
 	if(threadIdx.x == 0){
 		dest->width = uppedW;
 		dest->height = uppedH;
 	}
 	//__syncthreads();
+	uint32_t xEnd = min(currentGaussW, uppedW);
 	const uint8_t  rows = KERNEL_DIMENSION;
 	const uint8_t  cols = KERNEL_DIMENSION;
 	const int32_t  xstart = -1 * cols / 2;
@@ -30,14 +33,15 @@ __device__ void upsampleConvolve_fast(Image3 *dest, Image3 *source, Kernel kerne
 	}
 	__syncthreads();
 
-	dim = uppedW * uppedH;
+
+	dim = xEnd * yEnd;
 	max = dim / blockDim.x;
 	for(uint32_t li = 0; li <= max; li++){
 		uint32_t idx = li * blockDim.x + threadIdx.x;
 		if(idx < dim){
-			uint32_t i = idx % uppedW, j = idx / uppedW;
+			uint32_t i = idx % xEnd, j = idx / xEnd;
 
-			Pixel3 c = zero3vect;
+			Pixel3 ups = zero3vect;
 			for (uint32_t y = 0; y < rows; y++) {
                 int32_t jy = (j + ystart + y) / 2;
 				for (uint32_t x = 0; x < cols; x++) {
@@ -48,19 +52,27 @@ __device__ void upsampleConvolve_fast(Image3 *dest, Image3 *source, Kernel kerne
 
 					float kern_elem = kernel[getKernelPosition(x, y)];
 					Pixel3 px = d_getPixel3(ds_upsampled, smallWidth, fi, fj); //ds_upsampled[fj * uppedW + fi]; //*getPixel3(source, ix, jy);
-					c.x += px.x * kern_elem;
-					c.y += px.y * kern_elem;
-					c.z += px.z * kern_elem;
+					ups.x += px.x * kern_elem;
+					ups.y += px.y * kern_elem;
+					ups.z += px.z * kern_elem;
 				}
 			}
-			d_setPixel3(destPx, uppedW, i, j, c);
+
+			Pixel3 crr = d_getPixel3(crtGssPx, currentGaussW, i, j);
+			Pixel3 sub = vec3Sub(crr, ups, Pixel3);
+			d_setPixel3(destPx, xEnd, i, j, sub);
 		}
 	}
 	__syncthreads();
 }
 __device__ void laplacianPyramid_fast(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Kernel filter, Pixel3 *ds_upsampled){
+	Image3 *currentGauss = tempGauss[0], *nextGauss = tempGauss[1];
 	for(uint8_t i = 0; i < nLevels; i++){
-		Image3 *upsampled = laplacian[i];
+		//printf("Launching lapl pyr with i = %d\n", i);
+		upsampleConvolve_fast(laplacian[i], nextGauss, currentGauss, filter, ds_upsampled);
+		currentGauss = nextGauss;
+		nextGauss = tempGauss[i + 1];
+		/*Image3 *upsampled = laplacian[i];
 		upsampleConvolve_fast(upsampled, tempGauss[i + 1], filter, ds_upsampled);
 		//No extra synchtreads needed because there already is one at the end of upsampleConvolve 
 
@@ -68,8 +80,10 @@ __device__ void laplacianPyramid_fast(Pyramid laplacian, Pyramid tempGauss, uint
 		//TODO Check if min macro works fine for cuda
 		Pixel3 *currentPx = current->pixels, *upsampledPx = upsampled->pixels;
 		uint32_t currentW = current->width, upW = upsampled->width;
+
 		uint32_t yEnd = min(current->height, upsampled->height);
-		uint32_t xEnd = min(current->width, upsampled->width);
+		uint32_t xEnd = min(currentW, upW);
+
 		uint32_t dim = xEnd * yEnd;
 		uint32_t max = dim / blockDim.x;
 		for(uint32_t li = 0; li <= max; li++){
@@ -81,7 +95,7 @@ __device__ void laplacianPyramid_fast(Pyramid laplacian, Pyramid tempGauss, uint
 				d_setPixel3(upsampledPx, upW, x, y, vec3Sub(crr, ups, Pixel3));
 			}
 		}
-		//__syncthreads();
+		//__syncthreads();*/
 	}
 	//No extra synchtreads needed
 	d_imgcpy3(laplacian[nLevels], tempGauss[nLevels]);
@@ -548,8 +562,8 @@ __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uin
 	//d_subimage3Test<<<1, 64>>>(d_img, d_blurImg, 500, 625, 32, 190);
 	copyImg3Device2Host(h_img, d_blurImg);*/
 
-	//CHECK(cudaDeviceSynchronize());
-	for(uint8_t h_lev = 0; h_lev < h_nLevels; h_lev++){
+	gettimeofday(&start, NULL);
+	for(uint8_t h_lev = 2; h_lev < h_nLevels; h_lev++){
 		printff("Loop %u\n", h_lev);
 		uint32_t h_subregionDimension = 3 * ((1 << (h_lev + 2)) - 1) / 2;
 
@@ -560,18 +574,19 @@ __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uin
 			__d_llf_internal<<<grid, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, d_img, h_width, h_height, h_lev, h_subregionDimension, d_filter, h_sigma, h_alpha, h_beta, d_buffer);
 		#else
 			//h_elementsNo, h_nThreads
-			__d_llf_internal<<<h_elementsNo, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, d_img, h_width, h_height, h_lev, h_subregionDimension, d_filter, h_sigma, h_alpha, h_beta, d_buffer, h_elementsNo);
+			__d_llf_internal<<<1, 1>>>(d_outputLaplacian, d_gaussPyramid, d_img, h_width, h_height, h_lev, h_subregionDimension, d_filter, h_sigma, h_alpha, h_beta, d_buffer, h_elementsNo);
 		#endif
 		CHECK(cudaDeviceSynchronize());
+		//break;
 	}
 	d_copyPyrLevel<<<1, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, h_nLevels);
 	CHECK(cudaDeviceSynchronize());
 	collapse<<<1, h_nThreads>>>(d_img, d_outputLaplacian, h_nLevels, d_filter);
+	CHECK(cudaDeviceSynchronize());
 	gettimeofday(&stop, NULL);
 	passed += (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
 	passed /= 1000;
 	printff("Total time: %lums\n", passed);
-	CHECK(cudaDeviceSynchronize());
 
 	d_clampImage3<<<(((h_width * h_height) + h_nThreads - 1) / h_nThreads), h_nThreads>>>(d_img);
 	CHECK(cudaDeviceSynchronize());
@@ -601,10 +616,10 @@ int main(){
 	AlphaMap map = getAlphaMap(img4);
 	destroyImage4(&img4);
 
-	llf(img, 0.35, 0.4, 5, 3, 640, 512);
+	llf(img, 0.35, 0.4, 5, 3, 640, 128);
 
 	img4 = image3to4AlphaMap(img, map);
 	destroyImage3(&img);
-	printStaticImage4(img4);
+	//printStaticImage4(img4);
 	destroyImage4(&img4);
 }
