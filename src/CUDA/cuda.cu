@@ -1,6 +1,7 @@
 #include "cuda.cuh"
 
 #include "../utils/test/testimage.h"
+#include <sys/time.h>
 
 __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel){
 	uint32_t smallWidth = source->width, smallHeight = source->height;
@@ -232,7 +233,7 @@ __global__ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Ke
 #if SYNC_PRIMITIVES_SUPPORTED
 __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width, uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, double sigma, double alpha, double beta, PyrBuffer *buffer){
 #else
-__global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width, uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, double sigma, double alpha, double beta, PyrBuffer *buffer, uint8_t elementsNo){
+__global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width, uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, double sigma, double alpha, double beta, PyrBuffer *buffer, uint16_t elementsNo){
 #endif
 	__shared__ Pyramid bufferLaplacianPyramid, bufferGaussPyramid;
 	__shared__ Pixel3 g0;
@@ -330,6 +331,9 @@ __host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, 
 	size_t rsize = 1024ULL*1024ULL*1024ULL*4ULL;  // allocate 4GB
 	CHECK(cudaDeviceSetLimit(cudaLimitMallocHeapSize, rsize));
 
+	struct timeval start, stop;
+	uint64_t passed = 0;
+
 	uint32_t h_width = h_img->width, h_height = h_img->height;
 	h_nLevels = min(h_nLevels, 5);
 	h_nLevels = max(h_nLevels, 3);//int(ceil(std::abs(std::log2(min(width, height)) - 3))) + 2;
@@ -348,8 +352,12 @@ __host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, 
 	print("copyImg3");
 	copyImg3Host2Device(d_img, h_img);
 	print("FIRST KERNEL");
+	gettimeofday(&start, NULL);
 	gaussianPyramid<<<1, h_nThreads>>>(d_gaussPyramid, d_img, h_nLevels, d_filter);
 	CHECK(cudaDeviceSynchronize());
+	gettimeofday(&stop, NULL);
+	passed = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+
 
 	/*laplacianPyramidTest<<<1, 128>>>(d_outputLaplacian, d_gaussPyramid, h_nLevels, d_filter);
 	CHECK(cudaDeviceSynchronize());
@@ -366,14 +374,15 @@ __host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, 
 	//d_subimage3Test<<<1, 64>>>(d_img, d_blurImg, 500, 625, 32, 190);
 	copyImg3Device2Host(h_img, d_blurImg);*/
 
+	CHECK(cudaDeviceSynchronize());
 	for(uint8_t h_lev = 0; h_lev < h_nLevels; h_lev++){
 		printff("Loop %u\n", h_lev);
-		uint32_t h_layerW, h_layerH;
-		getPyramidDimensionsAtLayer(d_gaussPyramid, h_lev, &h_layerW, &h_layerH);
-		dim3 grid(h_layerW, h_layerH);
 		uint32_t h_subregionDimension = 3 * ((1 << (h_lev + 2)) - 1) / 2;
 
 		#if SYNC_PRIMITIVES_SUPPORTED
+			uint32_t h_layerW, h_layerH;
+			getPyramidDimensionsAtLayer(d_gaussPyramid, h_lev, &h_layerW, &h_layerH);
+			dim3 grid(h_layerW, h_layerH);
 			__d_llf_internal<<<grid, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, d_img, h_width, h_height, h_lev, h_subregionDimension, d_filter, h_sigma, h_alpha, h_beta, d_buffer);
 		#else
 			__d_llf_internal<<<h_elementsNo, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, d_img, h_width, h_height, h_lev, h_subregionDimension, d_filter, h_sigma, h_alpha, h_beta, d_buffer, h_elementsNo);
@@ -383,7 +392,12 @@ __host__ void llf(Image3 *h_img, double h_sigma, double h_alpha, double h_beta, 
 	d_copyPyrLevel<<<1, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, h_nLevels);
 	CHECK(cudaDeviceSynchronize());
 	collapse<<<1, h_nThreads>>>(d_img, d_outputLaplacian, h_nLevels, d_filter);
+	gettimeofday(&stop, NULL);
+	passed += (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+	passed /= 1000;
+	printff("Total time: %lums\n", passed);
 	CHECK(cudaDeviceSynchronize());
+
 	d_clampImage3<<<(((h_width * h_height) + h_nThreads - 1) / h_nThreads), h_nThreads>>>(d_img);
 	CHECK(cudaDeviceSynchronize());
 
