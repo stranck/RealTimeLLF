@@ -510,7 +510,7 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 	uint8_t currentNLevels = lev + 1;
 	gaussianPyramid_fast(bufferGaussPyramid, bufferLaplacianPyramid[0], currentNLevels, lcl_filter, convolveWorkingBuffer);
 	//upsampleConvolveSubtract_fast(bufferLaplacianPyramid[lev], bufferGaussPyramid[currentNLevels], bufferGaussPyramid[lev], lcl_filter, convolveWorkingBuffer);
-	Pixel3 outPx = upsampleConvolveSubtractSinglePixel(bufferGaussPyramid[currentNLevels], d_getPixel3(bufferGaussPyramid[lev]->pixels, bufferGaussPyramid[lev]->width, full_res_roi_x >> lev, full_res_roi_yShifted), lcl_filter, full_res_roi_x >> lev, full_res_roi_yShifted);
+	Pixel3 outPx = upsampleConvolveSubtractSinglePixel(bufferGaussPyramid[currentNLevels], d_getPixel3(bufferGaussPyramid[lev]->pixels, bufferGaussPyramid[lev]->width, full_res_roi_x >> lev, full_res_roi_yShifted), lcl_filter, full_res_roi_x >> lev, full_res_roi_yShifted, convolveWorkingBuffer);
 
 	if(threadIdx.x == 0){
 		d_setPixel3(outLev->pixels, outLev->width, x, y, outPx); //idk why i had to shift those

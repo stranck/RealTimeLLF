@@ -8,7 +8,7 @@
 //#define CUDART_VERSION 6000 //Sync primitives are only supported with sm_70 arch... I have a gtx1080 which is sm_60. Sad :(
 #define SYNC_PRIMITIVES_SUPPORTED __CUDA_ARCH__ >= 700
 
-#define MAX_LAYERS 3
+#define MAX_LAYERS 3 
 #define MAX_PYR_LAYER 3 * ((1 << (MAX_LAYERS + 1)) - 1)
 
 #include "../utils/imageutils.h"
