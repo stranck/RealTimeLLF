@@ -76,7 +76,7 @@ __device__ Image3 * d_makeImage3(uint32_t width, uint32_t height){
 		cudaError_t errPx = cudaMalloc(&img, width * height * sizeof(Pixel3));
 		i -> width = width;
 		i -> height = height;
-		//i->originalW = width; i->originalH = height;
+		//i->originalW = width; i->originalH = height; //TEST
 		i -> pixels = img;
 		printf("d_makeImage3: Dimensions: % 3dx% 3d    Pixels at 0x%012llx    Image3 at 0x%012llx    Error img: %s     Error pxs: %s\n", width, height, i, img, cudaGetErrorString(errImg), cudaGetErrorString(errPx));
 		if((long)img == 0x00110594d320) printf("DIOCANE detected\n");
@@ -89,7 +89,7 @@ __host__ Image3 * makeImage3Device(uint32_t width, uint32_t height){
 	Image3 h_i;
 	h_i.width = width;
 	h_i.height = height;
-	//h_i.originalW = width; h_i.originalH = height;
+	//h_i.originalW = width; h_i.originalH = height; //TEST
 	h_i.pixels = d_img;
 
 	Image3 *d_i;
@@ -173,6 +173,32 @@ __global__ void d_copyPyrLevel(Pyramid dst_pyr, Pyramid src_pyr, uint8_t level){
 __global__ void d_subimage3Test(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY){
 	d_subimage3(dest, source, startX, endX, startY, endY);
 }
+__device__ void d_subimage3Remap(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY, const Pixel3 g0, float sigma, float alpha, float beta){
+	uint32_t w = endX - startX;
+	uint32_t h = endY - startY;
+	if(threadIdx.x == 0){
+		dest->width = w;
+		dest->height = h;
+	}
+	__syncthreads();
+
+	Pixel3 *destPx = dest->pixels, *srcPx = source->pixels;
+	uint32_t srcW = source->width;
+	uint32_t dim = w * h;
+	uint32_t max = dim / blockDim.x;
+	for(uint32_t i = 0; i <= max; i++){
+		uint32_t idx = i * blockDim.x + threadIdx.x;
+		if(idx < dim){
+			uint32_t x = idx % w, y = idx / w;
+			uint32_t finalY = startY + y;
+
+			Pixel3 p = d_getPixel3(srcPx, srcW, startX + x, finalY);
+			Pixel3 remapped = d_remapSinglePixel(p, g0, sigma, alpha, beta);
+			d_setPixel3(destPx, w, x, y, remapped);
+		}
+	}
+	__syncthreads();
+}
 __device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY){
 	uint32_t w = endX - startX;
 	uint32_t h = endY - startY;
@@ -228,30 +254,31 @@ __device__ float d_smoothstep(float a, float b, float u) {
 	return t * t * (3 - 2 * t);
 }
 
+__device__ inline Pixel3 d_remapSinglePixel(const Pixel3 source, const Pixel3 g0, float sigma, float alpha, float beta){
+	Pixel3 delta = vec3Sub(source, g0, Pixel3);
+	float mag = sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+	if(mag > 1e-10) delta = vec3DivC(delta, mag, Pixel3);
+
+	int details = mag < sigma;
+	float fraction = mag / sigma;
+	float polynomial = pow(fraction, alpha);
+	if(alpha < 1){ //alpha is one of the entire llf params, so ALL the threads will always take the same branch
+		const float kNoiseLevel = 0.01;
+		float blend = d_smoothstep(kNoiseLevel, 2 * kNoiseLevel, fraction * sigma);
+		polynomial = blend * polynomial + (1 - blend) * fraction;
+	}
+	float d = (sigma * polynomial) * details + (((mag - sigma) * beta) + sigma) * (1 - details);
+	Pixel3 px = vec3MulC(delta, d, Pixel3);
+	return vec3Add(g0, px, Pixel3);
+}
 __device__ void d_remap(Image3 * img, const Pixel3 g0, float sigma, float alpha, float beta){
 	uint32_t dim = img -> width * img -> height;
 	uint32_t max = dim / blockDim.x;
 	Pixel3 *pixels = img -> pixels;
 	for(uint32_t i = 0; i <= max; i++){
 		uint32_t idx = i * blockDim.x + threadIdx.x;
-		if(idx < dim){
-
-			Pixel3 delta = vec3Sub(pixels[idx], g0, Pixel3);
-			float mag = sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
-			if(mag > 1e-10) delta = vec3DivC(delta, mag, Pixel3);
-
-			int details = mag < sigma;
-			float fraction = mag / sigma;
-			float polynomial = pow(fraction, alpha);
-			if(alpha < 1){ //alpha is one of the entire llf params, so ALL the threads will always take the same branch
-				const float kNoiseLevel = 0.01;
-				float blend = d_smoothstep(kNoiseLevel, 2 * kNoiseLevel, fraction * sigma);
-				polynomial = blend * polynomial + (1 - blend) * fraction;
-			}
-			float d = (sigma * polynomial) * details + (((mag - sigma) * beta) + sigma) * (1 - details);
-			Pixel3 px = vec3MulC(delta, d, Pixel3);
-			pixels[idx] = vec3Add(g0, px, Pixel3);
-		}
+		if(idx < dim)
+			pixels[idx] = d_remapSinglePixel(pixels[idx], g0, sigma, alpha, beta);
 	}
 	__syncthreads();
 }

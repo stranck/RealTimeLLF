@@ -28,10 +28,10 @@
 	#include <cuda_runtime.h>
 #endif
 
-/*__device__ void upsampleConvolve_fast(Image3 *dest, Image3 *source, Kernel kernel, Pixel3 *ds_upsampled);
+__device__ void upsampleConvolveSubtract_fast(Image3 *dest, Image3 *source, Kernel kernel, Pixel3 *ds_upsampled);
 __device__ void laplacianPyramid_fast(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Kernel filter, Pixel3 *ds_upsampled);
 __device__ void downsampleConvolve_fast(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter, Pixel3 *ds_downsampled);
-__device__ void gaussianPyramid_fast(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLevels, Kernel d_filter, Pixel3 *ds_downsampled);*/
+__device__ void gaussianPyramid_fast(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLevels, Kernel d_filter, Pixel3 *ds_downsampled);
 __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel);
 __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter);
 __device__ void __gaussianPyramid_internal(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLevels, Kernel d_filter);

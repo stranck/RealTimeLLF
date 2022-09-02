@@ -74,4 +74,6 @@ __device__ void d_destroydPyramid(Pyramid pyr, uint8_t nLevels);
 __device__ Image3 * d_makeImage3(uint32_t width, uint32_t height);
 __device__ Pyramid d_createPyramid(uint32_t width, uint32_t height, uint8_t nLevels);
 __device__ void d_remap(Image3 * img, const Pixel3 g0, float sigma, float alpha, float beta);
+__device__ inline Pixel3 d_remapSinglePixel(const Pixel3 source, const Pixel3 g0, float sigma, float alpha, float beta);
 __device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY);
+__device__ void d_subimage3Remap(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY, const Pixel3 g0, float sigma, float alpha, float beta);
