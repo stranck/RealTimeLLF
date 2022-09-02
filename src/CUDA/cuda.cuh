@@ -28,6 +28,7 @@
 	#include <cuda_runtime.h>
 #endif
 
+__device__ Pixel3 upsampleConvolveSubtractSinglePixel(Image3 *source, Pixel3 gaussPx, Kernel kernel, uint32_t i, uint32_t j);
 __device__ void upsampleConvolveSubtract_fast(Image3 *dest, Image3 *source, Kernel kernel, Pixel3 *ds_upsampled);
 __device__ void laplacianPyramid_fast(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Kernel filter, Pixel3 *ds_upsampled);
 __device__ void downsampleConvolve_fast(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter, Pixel3 *ds_downsampled);

@@ -3,6 +3,66 @@
 #include "../utils/test/testimage.h"
 #include <sys/time.h>
 
+__device__ Pixel3 upsampleConvolveSubtractSinglePixel(Image3 *source, Pixel3 gaussPx, Kernel kernel, uint32_t i, uint32_t j, Pixel3 *convolveWorkingBuffer){
+	uint32_t smallWidth = source->width, smallHeight = source->height;
+	Pixel3* srcPx = source->pixels;
+	const int32_t  xstart = -1 * KERNEL_DIMENSION / 2;
+	const int32_t  ystart = -1 * KERNEL_DIMENSION / 2;
+	
+	//__shared__ Pixel3 ups;
+	//ups = zero3vect;
+	Pixel3 ups = zero3vect;
+	//for (uint32_t y = 0; y < KERNEL_DIMENSION; y++) {
+	//	for (uint32_t x = 0; x < KERNEL_DIMENSION; x++) {
+	uint32_t idx = threadIdx.x;
+	if(idx < (KERNEL_DIMENSION * KERNEL_DIMENSION)){
+		uint32_t x = idx % KERNEL_DIMENSION, y = idx / KERNEL_DIMENSION;
+
+		int32_t jy = (j + ystart + y) / 2;
+		int32_t ix = (i + xstart + x) / 2;
+
+		int32_t oob = ix >= 0 && ix < smallWidth && jy >= 0 && jy < smallHeight;
+		int32_t fi = ix * oob + (i / 2) * (1 - oob), fj = jy * oob + (j / 2) * (1 - oob);
+
+		float kern_elem = kernel[getKernelPosition(x, y)];
+		Pixel3 px = d_getPixel3(srcPx, smallWidth, fi, fj); //srcPx[fj * smallWidth + fi];
+
+		convolveWorkingBuffer[idx] = vec3MulC(px, kern_elem, Pixel3);
+		//ups.x += px.x * kern_elem;
+		//ups.y += px.y * kern_elem;
+		//ups.z += px.z * kern_elem;
+		
+		//float *upsAddr = (float *) &ups, *pxAddr = (float *) &px;
+		//uint32_t addrId = idx % 3;
+		//for(uint32_t n = 0; n < 3; n++){
+		//	uint32_t addrIndex = ((addrId + n) % 3);
+		//	atomicAdd(upsAddr + addrIndex, *(pxAddr + addrIndex) * kern_elem);
+		//}
+		//atomicAdd(&ups.x, px.x * kern_elem);
+		//atomicAdd(&ups.y, px.y * kern_elem);
+		//atomicAdd(&ups.z, px.z * kern_elem);
+		//}
+	}
+
+	for(uint32_t stride = KERNEL_DIMENSION * KERNEL_DIMENSION / 2; stride > 1; stride = stride >> 1){
+		__syncthreads();
+		if(idx < stride){
+			convolveWorkingBuffer[idx].x += convolveWorkingBuffer[idx + stride].x;
+			convolveWorkingBuffer[idx].y += convolveWorkingBuffer[idx + stride].y;
+			convolveWorkingBuffer[idx].z += convolveWorkingBuffer[idx + stride].z;
+		}
+	}
+	/*if(idx == 0){
+		for(uint32_t n = 0; n < KERNEL_DIMENSION * KERNEL_DIMENSION; n++){
+			ups.x += convolveWorkingBuffer[n].x;
+			ups.y += convolveWorkingBuffer[n].y;
+			ups.z += convolveWorkingBuffer[n].z;
+		}
+	}*/
+	//__syncthreads();
+
+	return vec3Sub(gaussPx, ups, Pixel3);
+}
 __device__ void upsampleConvolveSubtract_fast(Image3 *dest, Image3 *source, Image3 *currentGauss, Kernel kernel, Pixel3 *ds_upsampled){
 	//printf("upsampleConvolve_fast addr:  DEST: 0x%012llx       SRC: 0x%012llx        GAUS: 0x%012llx\n", dest, source, currentGauss);
 	uint32_t smallWidth = source->width, smallHeight = source->height;
@@ -67,52 +127,6 @@ __device__ void upsampleConvolveSubtract_fast(Image3 *dest, Image3 *source, Imag
 		}
 	}
 	__syncthreads();
-}
-__device__ void laplacianPyramid_fast(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Kernel filter, Pixel3 *ds_upsampled){
-	upsampleConvolveSubtract_fast(laplacian[nLevels - 1], tempGauss[nLevels], tempGauss[nLevels - 1], filter, ds_upsampled);
-	////printf("============= LAPLACIAN PYRAMID    NLEVELS: %d =============\n", nLevels);
-	////__shared__ Image3 *lcl_tempGauss[MAX_LAYERS];
-	////if(threadIdx.x <= nLevels) lcl_tempGauss[threadIdx.x] = tempGauss[threadIdx.x];
-	////__syncthreads();
-	///*Image3 *currentGauss/* = tempGauss[0]*/, *nextGauss = tempGauss[0];
-	//for(uint8_t i = 0; i < nLevels; i++){
-	//	//printf("+++ Launching upsampleConvolve with i = %d\n", i);
-	//	currentGauss = nextGauss;
-	//	nextGauss = tempGauss[i + 1];
-	//	upsampleConvolveSubtract_fast(laplacian[i], tempGauss[i + 1], tempGauss[i], filter, ds_upsampled);
-	//	//upsampleConvolve_fast(laplacian[i], nextGauss, currentGauss, filter, ds_upsampled);
-	//	
-	//	/*Image3 *upsampled = laplacian[i];
-	//	upsampleConvolve_fast(upsampled, tempGauss[i + 1], filter, ds_upsampled);
-	//	//No extra synchtreads needed because there already is one at the end of upsampleConvolve 
-
-	//	Image3 *current = tempGauss[i];
-	//	//TODO Check if min macro works fine for cuda
-	//	Pixel3 *currentPx = current->pixels, *upsampledPx = upsampled->pixels;
-	//	uint32_t currentW = current->width, upW = upsampled->width;
-
-	//	uint32_t yEnd = min(current->height, upsampled->height);
-	//	uint32_t xEnd = min(currentW, upW);
-
-	//	uint32_t dim = xEnd * yEnd;
-	//	uint32_t max = dim / blockDim.x;
-	//	for(uint32_t li = 0; li <= max; li++){
-	//		uint32_t idx = li * blockDim.x + threadIdx.x;
-	//		if(idx < dim){
-	//			uint32_t x = idx % xEnd, y = idx / xEnd;
-	//			Pixel3 ups = d_getPixel3(upsampledPx, upW, x, y);
-	//			Pixel3 crr = d_getPixel3(currentPx, currentW, x, y);
-	//			d_setPixel3(upsampledPx, upW, x, y, vec3Sub(crr, ups, Pixel3));
-	//		}
-	//	}
-	//	//__syncthreads();*//*
-	//}
-	////No extra synchtreads needed
-	//d_imgcpy3(laplacian[nLevels], tempGauss[nLevels]);*/
-}
-__global__ void laplacianPyramid_fastTest(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Kernel filter){
-	__shared__ Pixel3 convolveWorkingBuffer[MAX_PYR_LAYER * MAX_PYR_LAYER];
-	laplacianPyramid_fast(laplacian, tempGauss, nLevels, filter, convolveWorkingBuffer);
 }
 
 __device__ void downsampleConvolve_fast(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter, Pixel3 *ds_downsampled){
@@ -502,12 +516,14 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 	gaussianPyramid_fast(bufferGaussPyramid, bufferLaplacianPyramid[0], currentNLevels, lcl_filter, convolveWorkingBuffer);
 	//__gaussianPyramid_internal(bufferGaussPyramid, bufferLaplacianPyramid[0], currentNLevels, lcl_filter);
 	//printf("laplacian %ux%u\n", x, y);
-	laplacianPyramid_fast(bufferLaplacianPyramid, bufferGaussPyramid, currentNLevels, lcl_filter, convolveWorkingBuffer);
+	//upsampleConvolveSubtract_fast(bufferLaplacianPyramid[lev], bufferGaussPyramid[currentNLevels], bufferGaussPyramid[lev], lcl_filter, convolveWorkingBuffer);
 	//laplacianPyramid(bufferLaplacianPyramid, bufferGaussPyramid, currentNLevels, lcl_filter);
+	Pixel3 outPx = upsampleConvolveSubtractSinglePixel(bufferGaussPyramid[currentNLevels], d_getPixel3(bufferGaussPyramid[lev]->pixels, bufferGaussPyramid[lev]->width, full_res_roi_x >> lev, full_res_roi_yShifted), lcl_filter, full_res_roi_x >> lev, full_res_roi_yShifted);
 
 	//printf("pixel copy %ux%u\n", x, y);
 	if(threadIdx.x == 0){
-		d_setPixel3(outLev->pixels, outLev->width, x, y, d_getPixel3(crtLev->pixels, crtLev->width, full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
+		d_setPixel3(outLev->pixels, outLev->width, x, y, outPx); //idk why i had to shift those
+		//d_setPixel3(outLev->pixels, outLev->width, x, y, d_getPixel3(crtLev->pixels, crtLev->width, full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
 		
 		d_releaseBuffer(node, buffer);
 	}
