@@ -42,14 +42,13 @@ __device__ Pixel3 upsampleConvolveSubtractSinglePixel(Image3 *source, Pixel3 gau
 		//atomicAdd(&ups.y, px.y * kern_elem);
 		//atomicAdd(&ups.z, px.z * kern_elem);
 		//}
-	}
-
-	for(uint32_t stride = KERNEL_DIMENSION * KERNEL_DIMENSION / 2; stride > 1; stride = stride >> 1){
-		__syncthreads();
-		if(idx < stride){
-			convolveWorkingBuffer[idx].x += convolveWorkingBuffer[idx + stride].x;
-			convolveWorkingBuffer[idx].y += convolveWorkingBuffer[idx + stride].y;
-			convolveWorkingBuffer[idx].z += convolveWorkingBuffer[idx + stride].z;
+		for(uint32_t stride = KERNEL_DIMENSION * KERNEL_DIMENSION / 2; stride > 1; stride = stride >> 1){
+			//__syncthreads();
+			if(idx < stride){
+				convolveWorkingBuffer[idx].x += convolveWorkingBuffer[idx + stride].x;
+				convolveWorkingBuffer[idx].y += convolveWorkingBuffer[idx + stride].y;
+				convolveWorkingBuffer[idx].z += convolveWorkingBuffer[idx + stride].z;
+			}
 		}
 	}
 	/*if(idx == 0){
@@ -505,29 +504,21 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 	}
 	__syncthreads();
 
-	//if(exIdx == 78) printf("Idx.x %d    exIdx %d    bufferLapl[0] addr: 0x%012llx\n", blockIdx.x, exIdx, bufferLaplacianPyramid[0]);
-	//printf("subimage %ux%u\n", x, y);
 	//d_subimage3(bufferLaplacianPyramid[0], img, base_x, end_x, base_y, end_y); //Using bufferLaplacianPyramid[0] as temp buffer
-	//printf("remap %ux%u\n", x, y);
 	//d_remap(bufferLaplacianPyramid[0], g0, sigma, alpha, beta);
 	d_subimage3Remap(bufferLaplacianPyramid[0], img, base_x, end_x, base_y, end_y, g0, sigma, alpha, beta);
 	uint8_t currentNLevels = lev + 1;
-	//printf("remap %ux%u\n", x, y);
 	gaussianPyramid_fast(bufferGaussPyramid, bufferLaplacianPyramid[0], currentNLevels, lcl_filter, convolveWorkingBuffer);
-	//__gaussianPyramid_internal(bufferGaussPyramid, bufferLaplacianPyramid[0], currentNLevels, lcl_filter);
-	//printf("laplacian %ux%u\n", x, y);
 	//upsampleConvolveSubtract_fast(bufferLaplacianPyramid[lev], bufferGaussPyramid[currentNLevels], bufferGaussPyramid[lev], lcl_filter, convolveWorkingBuffer);
-	//laplacianPyramid(bufferLaplacianPyramid, bufferGaussPyramid, currentNLevels, lcl_filter);
 	Pixel3 outPx = upsampleConvolveSubtractSinglePixel(bufferGaussPyramid[currentNLevels], d_getPixel3(bufferGaussPyramid[lev]->pixels, bufferGaussPyramid[lev]->width, full_res_roi_x >> lev, full_res_roi_yShifted), lcl_filter, full_res_roi_x >> lev, full_res_roi_yShifted);
 
-	//printf("pixel copy %ux%u\n", x, y);
 	if(threadIdx.x == 0){
 		d_setPixel3(outLev->pixels, outLev->width, x, y, outPx); //idk why i had to shift those
 		//d_setPixel3(outLev->pixels, outLev->width, x, y, d_getPixel3(crtLev->pixels, crtLev->width, full_res_roi_x >> lev, full_res_roi_yShifted)); //idk why i had to shift those
 		
-		d_releaseBuffer(node, buffer);
+		//d_releaseBuffer(node, buffer);
 	}
-	__syncthreads();
+	//__syncthreads();
 	
 	#if !(SYNC_PRIMITIVES_SUPPORTED)
 		}
@@ -564,7 +555,7 @@ __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uin
 	gaussianPyramid<<<1, h_nThreads>>>(d_gaussPyramid, d_img, h_nLevels, d_filter);
 	CHECK(cudaDeviceSynchronize());
 	gettimeofday(&stop, NULL);
-	passed = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+	//passed = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
 
 	/*//Image3 *d_tempImg = getImageFromPyramidDevice(d_outputLaplacian, 0);
 	//const uint32_t x = 368, y = 279;
@@ -606,11 +597,11 @@ __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uin
 		CHECK(cudaDeviceSynchronize());
 		//break;
 	}
+	gettimeofday(&stop, NULL);
 	d_copyPyrLevel<<<1, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, h_nLevels);
 	CHECK(cudaDeviceSynchronize());
 	collapse<<<1, h_nThreads>>>(d_img, d_outputLaplacian, h_nLevels, d_filter);
 	CHECK(cudaDeviceSynchronize());
-	gettimeofday(&stop, NULL);
 	passed += (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
 	passed /= 1000;
 	printff("Total time: %lums\n", passed);
