@@ -10,6 +10,7 @@
 #include "../utils/llfUtils.h"
 #include "../utils/extramath.h"
 #include "../utils/imageutils.h"
+
 #ifdef CUDA_INCLUDE
 	#include <cuda.h>
 	#include <cuda_runtime.h>
@@ -51,8 +52,6 @@
 	_pxs[(_y) * (_width) + (_x)] = _px; \
 }
 
-__global__ void d_subimage3Test(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY);
-
 #define KERNEL_DIMENSION 5
 
 __host__ Kernel createFilterDevice();
@@ -65,12 +64,14 @@ __host__ void copyImg3Device2Host(Image3 *h_imgDst, Image3 *d_imgSrc);
 __host__ Image3 * getImageFromPyramidDevice(Pyramid d_pyr, uint8_t h_level);
 __host__ Pyramid createPyramidDevice(uint32_t width, uint32_t height, uint8_t nLevels);
 __host__ void getPyramidDimensionsAtLayer(Pyramid pyr, uint8_t level, uint32_t *width, uint32_t *height);
+
 __global__ void d_copyPyrLevel(Pyramid dst_pyr, Pyramid src_pyr, uint8_t level);
 __global__ void d_clampImage3(Image3 *img);
+
 __device__ void d_destroyImage3(Image3 *img);
-__device__ void d_imgcpy3(Image3 *d_dest, Image3 *d_source);
 __device__ float d_smoothstep(float a, float b, float u);
 __device__ float d_clamp(float a, float min_, float max_);
+__device__ void d_imgcpy3(Image3 *d_dest, Image3 *d_source);
 __device__ void d_destroydPyramid(Pyramid pyr, uint8_t nLevels);
 __device__ Image3 * d_makeImage3(uint32_t width, uint32_t height);
 __device__ Pyramid d_createPyramid(uint32_t width, uint32_t height, uint8_t nLevels);

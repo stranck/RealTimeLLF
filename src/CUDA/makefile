@@ -8,8 +8,6 @@ default: all;
 
 cudaUtils.o: cudaUtils.cu 
 	$(GCC) $(ARGS) -dc $^ -o $@
-bufferManager.o: bufferManager.cu
-	$(GCC) $(ARGS) -dc $^ -o $@
 cuda.o: cuda.cu
 	$(GCC) $(ARGS) -dc $^ -o $@
 
@@ -20,7 +18,7 @@ clean:
 	rm -f cuda.o
 
 .PHONY: cuda
-cuda: cuda.o cudaUtils.o bufferManager.o $(UTILS)imageutils.cpp $(UTILS)utils.cpp
+cuda: cuda.o cudaUtils.o $(UTILS)imageutils.cpp $(UTILS)utils.cpp
 	$(GCC) $(ARGS) $^ -o $(BINFOLDR)$@
 
 .PHONY: all
