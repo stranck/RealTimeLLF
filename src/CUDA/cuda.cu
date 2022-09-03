@@ -540,13 +540,17 @@ __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uin
 
 
 
-int main(){
+int main(int argc, char const *argv[]){
+	if(argc < 3)
+		printff("Usage: %s <number of blocks> <number of threads>", argv[0]);
+	int blocksNo = atoi(argv[1]);
+	int threadsNo = atoi(argv[2]);
 	Image4 *img4 = getStaticImage4();
 	Image3 *img = image4to3(img4);
 	AlphaMap map = getAlphaMap(img4);
 	destroyImage4(&img4);
 
-	llf(img, 0.35, 0.4, 5, 3, 128, 256);
+	llf(img, 0.35, 0.4, 5, 3, threadsNo, blocksNo);
 
 	img4 = image3to4AlphaMap(img, map);
 	destroyImage3(&img);
