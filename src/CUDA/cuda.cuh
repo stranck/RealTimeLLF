@@ -36,6 +36,9 @@ __device__ void gaussianPyramid_fast(Pyramid d_outPyr, Image3 *d_inImg, uint8_t 
 __device__ void upsampleConvolve(Image3 *dest, Image3 *source, Kernel kernel);
 __device__ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter);
 __device__ void __gaussianPyramid_internal(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLevels, Kernel d_filter);
+__device__ Pixel3 upsampleConvolveSubtractSinglePixel_shared(Pixel3 *srcPx, uint32_t smallWidth, uint32_t smallHeight, Pixel3 gaussPx, Kernel kernel, uint32_t i, uint32_t j, Pixel3 *convolveWorkingBuffer);
+__device__ void downsampleConvolve_shared(Pixel3 *dstPx, Pixel3 *srcPx, uint32_t *width, uint32_t *height, Kernel filter);
+__device__ void gaussianPyramid_shared(Pixel3 **smallDest, Pixel3 **sourceBigDest, uint32_t *width, uint32_t *height, uint32_t *smallW, uint32_t *smallH, uint8_t nLevels, Kernel d_filter);
 __global__ void gaussianPyramid(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLevels, Kernel d_filter);
 __device__ void laplacianPyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Kernel filter);
 __global__ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter);

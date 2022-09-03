@@ -78,3 +78,4 @@ __device__ void d_remap(Image3 * img, const Pixel3 g0, float sigma, float alpha,
 __device__ inline Pixel3 d_remapSinglePixel(const Pixel3 source, const Pixel3 g0, float sigma, float alpha, float beta);
 __device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY);
 __device__ void d_subimage3Remap(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY, const Pixel3 g0, float sigma, float alpha, float beta);
+__device__ void d_subimage3Remap_shared(Pixel3 *destPx, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY, const Pixel3 g0, float sigma, float alpha, float beta);

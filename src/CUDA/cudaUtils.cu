@@ -173,6 +173,27 @@ __global__ void d_copyPyrLevel(Pyramid dst_pyr, Pyramid src_pyr, uint8_t level){
 __global__ void d_subimage3Test(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY){
 	d_subimage3(dest, source, startX, endX, startY, endY);
 }
+__device__ void d_subimage3Remap_shared(Pixel3 *destPx, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY, const Pixel3 g0, float sigma, float alpha, float beta){
+	uint32_t w = endX - startX;
+	uint32_t h = endY - startY;
+
+	Pixel3 *srcPx = source->pixels;
+	uint32_t srcW = source->width;
+	uint32_t dim = w * h;
+	uint32_t max = dim / blockDim.x;
+	for(uint32_t i = 0; i <= max; i++){
+		uint32_t idx = i * blockDim.x + threadIdx.x;
+		if(idx < dim){
+			uint32_t x = idx % w, y = idx / w;
+			uint32_t finalY = startY + y;
+
+			Pixel3 p = d_getPixel3(srcPx, srcW, startX + x, finalY);
+			Pixel3 remapped = d_remapSinglePixel(p, g0, sigma, alpha, beta);
+			d_setPixel3(destPx, w, x, y, remapped);
+		}
+	}
+	__syncthreads();
+}
 __device__ void d_subimage3Remap(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY, const Pixel3 g0, float sigma, float alpha, float beta){
 	uint32_t w = endX - startX;
 	uint32_t h = endY - startY;
