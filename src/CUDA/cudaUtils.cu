@@ -244,7 +244,7 @@ __device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint3
 	__syncthreads();
 }
 
-__global__ void d_clampImage3(Image3 *img){ //CUDA cock
+__global__ void d_clampImage3(Image3 *img){
 	__shared__ uint32_t dim;
 	__shared__ Pixel3 *px;
 
