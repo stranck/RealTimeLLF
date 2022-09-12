@@ -8,8 +8,6 @@
 #include <stdint.h>
 #include <math.h>
 
-#include <sys/time.h>
-
 #include "../utils/test/testimage.h"
 
 void downsample(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter, Image3 *buffer){
@@ -159,7 +157,7 @@ void laplacianPyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Ker
 				Pixel3 ups = *upsPtr;
 				Pixel3 crr = *getPixel3(current, x, y);
 
-				*upsPtr = vec3Sub(crr, ups, Pixel3);
+				vec3Sub(*upsPtr, crr, ups);
 			}
 		}
 	}
@@ -175,7 +173,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 		upsampleConvolve(dest, currentLevel, filter);
 		uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
 		for(uint32_t px = 0; px < sizeUpsampled; px++)
-			biggerLevelPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
+			vec3Add(biggerLevelPxs[px], destPxs[px], biggerLevelPxs[px]);
 		biggerLevel->width = dest->width;
 		biggerLevel->height = dest->height; //This could cause disalignment problem
 	}
@@ -185,7 +183,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 	upsampleConvolve(dest, currentLevel, filter);
 	uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
 	for(uint32_t px = 0; px < sizeUpsampled; px++)
-		destPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
+		vec3Add(destPxs[px], destPxs[px], biggerLevelPxs[px]);
 }
 
 void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels){
@@ -198,16 +196,15 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels){
 	Pyramid bufferGaussPyramid = createPyramid(width, height, nLevels);
 	Pyramid bufferLaplacianPyramid = createPyramid(width, height, nLevels);
 
-	struct timeval start, stop;
-	uint64_t passed = 0;
+	TimeData timeData;
+	TimeCounter passed = 0;
 
 	print("Creating first gauss pyramid");
-	gettimeofday(&start, NULL);
+	startTimerCounter(timeData);
 	gaussianPyramid(gaussPyramid, img, nLevels, filter);
-	gettimeofday(&stop, NULL);
-	passed = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+	stopTimerCounter(timeData, passed);
 	print("Entering main loop");
-	gettimeofday(&start, NULL);
+	startTimerCounter(timeData);
 	for(uint8_t lev = 0; lev < nLevels; lev++){
 		printff("laplacian inner loop %d/%d\n", lev, (nLevels - 1));
 		Image3 *currentGaussLevel = gaussPyramid[lev];
@@ -248,9 +245,7 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels){
 	imgcpy3(outputLaplacian[nLevels], gaussPyramid[nLevels]);
 	print("Collapsing");
 	collapse(img, outputLaplacian, nLevels, filter);
-	gettimeofday(&stop, NULL);
-	passed += (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
-	passed /= 1000;
+	stopTimerCounter(timeData, passed);
 	printff("Total time: %lums\n", passed);
 	
 	destroyPyramid(&gaussPyramid, nLevels);

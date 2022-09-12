@@ -1,7 +1,6 @@
 #include "cuda.cuh"
 
 #include "../utils/test/testimage.h"
-#include <sys/time.h>
 
 __device__ Pixel3 upsampleConvolveSubtractSinglePixel_shared(Pixel3 *srcPx, uint32_t smallWidth, uint32_t smallHeight, Pixel3 gaussPx, Kernel kernel, uint32_t i, uint32_t j, Pixel3 *convolveWorkingBuffer){
 	const int32_t  xstart = -1 * KERNEL_DIMENSION / 2;
@@ -21,7 +20,7 @@ __device__ Pixel3 upsampleConvolveSubtractSinglePixel_shared(Pixel3 *srcPx, uint
 		float kern_elem = kernel[getKernelPosition(x, y)];
 		Pixel3 px = d_getPixel3(srcPx, smallWidth, fi, fj);
 
-		convolveWorkingBuffer[idx] = vec3MulC(px, kern_elem, Pixel3);
+		vec3MulC(convolveWorkingBuffer[idx], px, kern_elem);
 	}
 
 	for(uint32_t stride = 16; stride > 1; stride = stride >> 1){
@@ -31,8 +30,9 @@ __device__ Pixel3 upsampleConvolveSubtractSinglePixel_shared(Pixel3 *srcPx, uint
 			convolveWorkingBuffer[idx].z += convolveWorkingBuffer[idx + stride].z;
 		}
 	}
-	ups = vec3Add(convolveWorkingBuffer[0], convolveWorkingBuffer[1], Pixel3);
-	return vec3Sub(gaussPx, ups, Pixel3);
+	vec3Add(ups, convolveWorkingBuffer[0], convolveWorkingBuffer[1]);
+	vec3Sub(ups, gaussPx, ups);
+	return ups;
 }
 __device__ Pixel3 upsampleConvolveSubtractSinglePixel(Image3 *source, Pixel3 gaussPx, Kernel kernel, uint32_t i, uint32_t j, Pixel3 *convolveWorkingBuffer){
 	uint32_t smallWidth = source->width, smallHeight = source->height;
@@ -54,7 +54,7 @@ __device__ Pixel3 upsampleConvolveSubtractSinglePixel(Image3 *source, Pixel3 gau
 		float kern_elem = kernel[getKernelPosition(x, y)];
 		Pixel3 px = d_getPixel3(srcPx, smallWidth, fi, fj);
 
-		convolveWorkingBuffer[idx] = vec3MulC(px, kern_elem, Pixel3);
+		vec3MulC(convolveWorkingBuffer[idx], px, kern_elem);
 	}
 	for(uint32_t stride = 16; stride > 1; stride = stride >> 1){
 		//__syncthreads();
@@ -64,9 +64,9 @@ __device__ Pixel3 upsampleConvolveSubtractSinglePixel(Image3 *source, Pixel3 gau
 			convolveWorkingBuffer[idx].z += convolveWorkingBuffer[idx + stride].z;
 		}
 	}
-	ups = vec3Add(convolveWorkingBuffer[0], convolveWorkingBuffer[1], Pixel3);
-
-	return vec3Sub(gaussPx, ups, Pixel3);
+	vec3Add(ups, convolveWorkingBuffer[0], convolveWorkingBuffer[1]);
+	vec3Sub(ups, gaussPx, ups);
+	return ups;
 }
 __device__ void upsampleConvolveSubtract_fast(Image3 *dest, Image3 *source, Image3 *currentGauss, Kernel kernel, Pixel3 *ds_upsampled){
 	uint32_t smallWidth = source->width, smallHeight = source->height;
@@ -122,8 +122,8 @@ __device__ void upsampleConvolveSubtract_fast(Image3 *dest, Image3 *source, Imag
 			}
 
 			Pixel3 crr = d_getPixel3(crtGssPx, currentGaussW, i, j);
-			Pixel3 sub = vec3Sub(crr, ups, Pixel3);
-			d_setPixel3(destPx, xEnd, i, j, sub);
+			vec3Sub(crr, crr, ups);
+			d_setPixel3(destPx, xEnd, i, j, crr);
 		}
 	}
 	__syncthreads();
@@ -190,7 +190,8 @@ __device__ void laplacianPyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t n
 				uint32_t x = idx % xEnd, y = idx / xEnd;
 				Pixel3 ups = d_getPixel3(upsampledPx, upsampled->width, x, y);
 				Pixel3 crr = d_getPixel3(currentPx, current->width, x, y);
-				d_setPixel3(upsampledPx, upsampled->width, x, y, vec3Sub(crr, ups, Pixel3));
+				vec3Sub(crr, crr, ups);
+				d_setPixel3(upsampledPx, upsampled->width, x, y, crr);
 			}
 		}
 	}
@@ -221,7 +222,7 @@ __global__ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Ke
 		for(uint32_t i = 0; i <= max; i++){
 			uint32_t px = i * blockDim.x + threadIdx.x;
 			if(px < sizeUpsampled)
-				biggerLevelPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
+				vec3Add(biggerLevelPxs[px], destPxs[px], biggerLevelPxs[px]);
 		}
 		if(threadIdx.x == 0){
 			biggerLevel->width = dest->width;
@@ -239,7 +240,7 @@ __global__ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Ke
 	for(uint32_t i = 0; i <= max; i++){
 		uint32_t px = i * blockDim.x + threadIdx.x;
 		if(px < sizeUpsampled)
-			destPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
+			vec3Add(destPxs[px], destPxs[px], biggerLevelPxs[px]);
 	}
 	__syncthreads();
 }
@@ -494,8 +495,8 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 }
 
 __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uint8_t h_nLevels, uint32_t h_nThreads, uint32_t h_elementsNo){
-	struct timeval start, stop;
-	uint64_t passed = 0;
+	TimeData timeData;
+	TimeCounter passed = 0;
 
 	uint32_t h_width = h_img->width, h_height = h_img->height;
 	h_nLevels = min(h_nLevels, MAX_LAYERS);
@@ -506,13 +507,12 @@ __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uin
 
 	Image3 *d_img = makeImage3Device(h_width, h_height);
 	copyImg3Host2Device(d_img, h_img);
-	gettimeofday(&start, NULL);
+	startTimerCounter(timeData);
 	gaussianPyramid<<<1, h_nThreads>>>(d_gaussPyramid, d_img, h_nLevels, d_filter);
 	CHECK(cudaDeviceSynchronize());
-	gettimeofday(&stop, NULL);
-	passed = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+	stopTimerCounter(timeData, passed);
 
-	gettimeofday(&start, NULL);
+	startTimerCounter(timeData);
 	for(uint8_t h_lev = 0; h_lev < h_nLevels; h_lev++){
 		uint32_t h_subregionDimension = 3 * ((1 << (h_lev + 2)) - 1) / 2;
 		__d_llf_internal<<<h_elementsNo, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, d_img, h_width, h_height, h_lev, h_subregionDimension, d_filter, h_sigma, h_alpha, h_beta, h_elementsNo);
@@ -522,9 +522,7 @@ __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uin
 	CHECK(cudaDeviceSynchronize());
 	collapse<<<1, h_nThreads>>>(d_img, d_outputLaplacian, h_nLevels, d_filter);
 	CHECK(cudaDeviceSynchronize());
-	gettimeofday(&stop, NULL);
-	passed += (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
-	passed /= 1000;
+	stopTimerCounter(timeData, passed);
 	printff("Total time: %lums\n", passed);
 
 	d_clampImage3<<<(((h_width * h_height) + h_nThreads - 1) / h_nThreads), h_nThreads>>>(d_img);
@@ -541,8 +539,10 @@ __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uin
 
 
 int main(int argc, char const *argv[]){
-	if(argc < 3)
-		printff("Usage: %s <number of blocks> <number of threads>", argv[0]);
+	if(argc < 3){
+		printff("Usage: %s <number of blocks> <number of threads>\n", argv[0]);
+		exit(1);
+	}
 	int blocksNo = atoi(argv[1]);
 	int threadsNo = atoi(argv[2]);
 	Image4 *img4 = getStaticImage4();

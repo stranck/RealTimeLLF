@@ -77,133 +77,101 @@ typedef struct {
 	float w;
 } Vec4f;
 
-#define vec4Add(v1, v2, t)({\
-	t ret;\
-	ret.x = v1.x + v2.x;\
-	ret.y = v1.y + v2.y;\
-	ret.z = v1.z + v2.z;\
-	ret.w = v1.w + v2.w;\
-	ret; \
-})
-#define vec4Sub(v1, v2, t)({\
-	t ret;\
-	ret.x = v1.x - v2.x;\
-	ret.y = v1.y - v2.y;\
-	ret.z = v1.z - v2.z;\
-	ret.w = v1.w - v2.w;\
-	ret; \
-})
-#define vec4Mul(v1, v2, t)({\
-	t ret;\
-	ret.x = v1.x * v2.x;\
-	ret.y = v1.y * v2.y;\
-	ret.z = v1.z * v2.z;\
-	ret.w = v1.w * v2.w;\
-	ret; \
-})
-#define vec4Div(v1, v2, t)({\
-	t ret;\
-	ret.x = v1.x / v2.x;\
-	ret.y = v1.y / v2.y;\
-	ret.z = v1.z / v2.z;\
-	ret.w = v1.w / v2.w;\
-	ret; \
-})
+#define vec4Add(dest, v1, v2){\
+	(dest).x = (v1).x + (v2).x;\
+	(dest).y = (v1).y + (v2).y;\
+	(dest).z = (v1).z + (v2).z;\
+	(dest).w = (v1).w + (v2).w;\
+}
+#define vec4Sub(dest, v1, v2){\
+	(dest).x = (v1).x - (v2).x;\
+	(dest).y = (v1).y - (v2).y;\
+	(dest).z = (v1).z - (v2).z;\
+	(dest).w = (v1).w - (v2).w;\
+}
+#define vec4Mul(dest, v1, v2){\
+	(dest).x = (v1).x * (v2).x;\
+	(dest).y = (v1).y * (v2).y;\
+	(dest).z = (v1).z * (v2).z;\
+	(dest).w = (v1).w * (v2).w;\
+}
+#define vec4Div(dest, v1, v2){\
+	(dest).x = (v1).x / (v2).x;\
+	(dest).y = (v1).y / (v2).y;\
+	(dest).z = (v1).z / (v2).z;\
+	(dest).w = (v1).w / (v2).w;\
+}
 
 
-#define vec4AddC(v1, c, t)({\
-	t ret;\
-	ret.x = v1.x + c;\
-	ret.y = v1.y + c;\
-	ret.z = v1.z + c;\
-	ret.w = v1.w + c;\
-	ret; \
-})
-#define vec4SubC(v1, c, t)({\
-	t ret;\
-	ret.x = v1.x - c;\
-	ret.y = v1.y - c;\
-	ret.z = v1.z - c;\
-	ret.w = v1.w - c;\
-	ret; \
-})
-#define vec4MulC(v1, c, t)({\
-	t ret;\
-	ret.x = v1.x * c;\
-	ret.y = v1.y * c;\
-	ret.z = v1.z * c;\
-	ret.w = v1.w * c;\
-	ret; \
-})
-#define vec4DivC(v1, c, t)({\
-	t ret;\
-	ret.x = v1.x / c;\
-	ret.y = v1.y / c;\
-	ret.z = v1.z / c;\
-	ret.w = v1.w / c;\
-	ret; \
-})
+#define vec4AddC(dest, v1, c){\
+	(dest).x = (v1).x + c;\
+	(dest).y = (v1).y + c;\
+	(dest).z = (v1).z + c;\
+	(dest).w = (v1).w + c;\
+}
+#define vec4SubC(dest, v1, c){\
+	(dest).x = (v1).x - c;\
+	(dest).y = (v1).y - c;\
+	(dest).z = (v1).z - c;\
+	(dest).w = (v1).w - c;\
+}
+#define vec4MulC(dest, v1, c){\
+	(dest).x = (v1).x * c;\
+	(dest).y = (v1).y * c;\
+	(dest).z = (v1).z * c;\
+	(dest).w = (v1).w * c;\
+}
+#define vec4DivC(dest, v1, c){\
+	(dest).x = (v1).x / c;\
+	(dest).y = (v1).y / c;\
+	(dest).z = (v1).z / c;\
+	(dest).w = (v1).w / c;\
+}
 
 
 
-#define vec3Add(v1, v2, t)({\
-	t ret;\
-	ret.x = v1.x + v2.x;\
-	ret.y = v1.y + v2.y;\
-	ret.z = v1.z + v2.z;\
-	ret; \
-})
-#define vec3Sub(v1, v2, t)({\
-	t ret;\
-	ret.x = v1.x - v2.x;\
-	ret.y = v1.y - v2.y;\
-	ret.z = v1.z - v2.z;\
-	ret; \
-})
-#define vec3Mul(v1, v2, t)({\
-	t ret;\
-	ret.x = v1.x * v2.x;\
-	ret.y = v1.y * v2.y;\
-	ret.z = v1.z * v2.z;\
-	ret; \
-})
-#define vec3Div(v1, v2, t)({\
-	t ret;\
-	ret.x = v1.x / v2.x;\
-	ret.y = v1.y / v2.y;\
-	ret.z = v1.z / v2.z;\
-	ret; \
-})
+#define vec3Add(dest, v1, v2){\
+	(dest).x = (v1).x + (v2).x;\
+	(dest).y = (v1).y + (v2).y;\
+	(dest).z = (v1).z + (v2).z;\
+}
+#define vec3Sub(dest, v1, v2){\
+	(dest).x = (v1).x - (v2).x;\
+	(dest).y = (v1).y - (v2).y;\
+	(dest).z = (v1).z - (v2).z;\
+}
+#define vec3Mul(dest, v1, v2){\
+	(dest).x = (v1).x * (v2).x;\
+	(dest).y = (v1).y * (v2).y;\
+	(dest).z = (v1).z * (v2).z;\
+}
+#define vec3Div(dest, v1, v2){\
+	(dest).x = (v1).x / (v2).x;\
+	(dest).y = (v1).y / (v2).y;\
+	(dest).z = (v1).z / (v2).z;\
+}
 
 
-#define vec3AddC(v1, c, t)({\
-	t ret;\
-	ret.x = v1.x + c;\
-	ret.y = v1.y + c;\
-	ret.z = v1.z + c;\
-	ret; \
-})
-#define vec3SubC(v1, c, t)({\
-	t ret;\
-	ret.x = v1.x - c;\
-	ret.y = v1.y - c;\
-	ret.z = v1.z - c;\
-	ret; \
-})
-#define vec3MulC(v1, c, t)({\
-	t ret;\
-	ret.x = v1.x * c;\
-	ret.y = v1.y * c;\
-	ret.z = v1.z * c;\
-	ret; \
-})
-#define vec3DivC(v1, c, t)({\
-	t ret;\
-	ret.x = v1.x / c;\
-	ret.y = v1.y / c;\
-	ret.z = v1.z / c;\
-	ret; \
-})
+#define vec3AddC(dest, v1, c){\
+	(dest).x = (v1).x + c;\
+	(dest).y = (v1).y + c;\
+	(dest).z = (v1).z + c;\
+}
+#define vec3SubC(dest, v1, c){\
+	(dest).x = (v1).x - c;\
+	(dest).y = (v1).y - c;\
+	(dest).z = (v1).z - c;\
+}
+#define vec3MulC(dest, v1, c){\
+	(dest).x = (v1).x * c;\
+	(dest).y = (v1).y * c;\
+	(dest).z = (v1).z * c;\
+}
+#define vec3DivC(dest, v1, c){\
+	(dest).x = (v1).x / c;\
+	(dest).y = (v1).y / c;\
+	(dest).z = (v1).z / c;\
+}
 
 #define zero2vect {0, 0}
 #define zero3vect {0, 0, 0}

@@ -12,8 +12,6 @@
 #include <math.h>
 #include <omp.h>
 
-#include <sys/time.h>
-
 #include "../utils/test/testimage.h"
 
 void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter){
@@ -124,7 +122,7 @@ void laplacianPyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Ker
 				Pixel3 ups = *upsPtr;
 				Pixel3 crr = *getPixel3(current, x, y);
 
-				*upsPtr = vec3Sub(crr, ups, Pixel3);
+				vec3Sub(*upsPtr, crr, ups);
 			}
 		}
 	}
@@ -241,7 +239,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 		uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
 		#pragma omp parallel for num_threads(nThreads) schedule(static, 8)
 		for(uint32_t px = 0; px < sizeUpsampled; px++)	
-			biggerLevelPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
+			vec3Add(biggerLevelPxs[px], destPxs[px], biggerLevelPxs[px]);
 		biggerLevel->width = dest->width;
 		biggerLevel->height = dest->height; //This could cause disalignment problem
 	}
@@ -252,7 +250,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 	uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
 	#pragma omp parallel for num_threads(nThreads) schedule(static, 8)
 	for(uint32_t px = 0; px < sizeUpsampled; px++)
-		destPxs[px] = vec3Add(destPxs[px], biggerLevelPxs[px], Pixel3);
+		vec3Add(destPxs[px], destPxs[px], biggerLevelPxs[px]);
 }
 
 void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, const uint8_t nThreads){
@@ -264,20 +262,19 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, con
 	Pyramid gaussPyramid = createPyramid(width, height, nLevels);
 	Pyramid outputLaplacian = createPyramid(width, height, nLevels);
 
-	struct timeval start, stop;
-	uint64_t passed = 0;
+	TimeData timeData;
+	TimeCounter passed = 0;
 
 	print("Creating first gauss pyramid");
-	gettimeofday(&start, NULL);
+	startTimerCounter(timeData);
 	gaussianPyramid_parallel(gaussPyramid, img, nLevels, filter, nThreads);
-	gettimeofday(&stop, NULL);
-	passed = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+	stopTimerCounter(timeData, passed);
 	print("Entering main loop");
 	// Sadly, due to approxxximation in the downsample function, I can't use sum to calculate the pyramid dimension :(
 	//uint32_t t = (0b100 << (nLevels * 2));
 	//uint32_t end = (img->width * img->height * ((t - 1) / 3)) / (t / 4); //sum[i=0, n] D / 4^i
 	uint32_t end = 0;
-	uint32_t pyrDimensions[nLevels + 1];
+	uint32_t *pyrDimensions = (uint32_t *) allocStack((nLevels + 1) * sizeof(uint32_t));
 	for(uint8_t i = 0; i < nLevels; i++){
 		Image3 *lev = gaussPyramid[i];
 		uint32_t dim = lev->width * lev->height;
@@ -286,16 +283,16 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, con
 	}
 	pyrDimensions[nLevels] = gaussPyramid[nLevels]->width * gaussPyramid[nLevels]->height;
 
-	Buffers bArr[nThreads];
-	CurrentLevelInfo cliArr[nThreads];
+	Buffers *bArr = (Buffers *) allocStack(nThreads * sizeof(Buffers));
+	CurrentLevelInfo *cliArr = (CurrentLevelInfo *) allocStack(nThreads * sizeof(CurrentLevelInfo));
 	#pragma omp parallel num_threads(nThreads)
 	{
 		int threadId = getThreadId();
-		bArr[threadId] = createBuffers(width, height, nLevels);
+		createBuffers(bArr[threadId], width, height, nLevels);
 		initLevelInfo(&(cliArr[threadId]), pyrDimensions, gaussPyramid);
 	}
 
-	gettimeofday(&start, NULL);
+	startTimerCounter(timeData);
 	#pragma omp parallel for num_threads(nThreads) schedule(dynamic)
 	for(uint32_t idx = 0; idx < end; idx++){
 		int threadId = getThreadId();
@@ -342,9 +339,7 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, con
 	imgcpy3_parallel(outputLaplacian[nLevels], gaussPyramid[nLevels], nThreads);
 	print("Collapsing");
 	collapse(img, outputLaplacian, nLevels, filter, nThreads);
-	gettimeofday(&stop, NULL);
-	passed += (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
-	passed /= 1000;
+	stopTimerCounter(timeData, passed);
 	printff("Total time: %lums\n", passed);
 
 	destroyPyramid(&gaussPyramid, nLevels);

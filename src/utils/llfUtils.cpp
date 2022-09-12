@@ -13,11 +13,11 @@ void remap(Image3 * img, const Pixel3 g0, float sigma, float alpha, float beta){
 	uint32_t size = img -> width * img -> height;
 	Pixel3 *pixels = img -> pixels;
 	for(int i = 0; i < size; i++){
-		Pixel3 delta = vec3Sub(pixels[i], g0, Pixel3);
+		Pixel3 delta;
+		vec3Sub(delta, pixels[i], g0);
 		float mag = sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
-		if(mag > 1e-10) {
-			delta = vec3DivC(delta, mag, Pixel3);
-		}
+		if(mag > 1e-10)
+			vec3DivC(delta, delta, mag);
 
 		if(mag < sigma){ //Details
 			float fraction = mag / sigma;
@@ -28,12 +28,12 @@ void remap(Image3 * img, const Pixel3 g0, float sigma, float alpha, float beta){
 				polynomial = blend * polynomial + (1 - blend) * fraction;
 			}
 			float d = sigma * polynomial;
-			Pixel3 px = vec3MulC(delta, d, Pixel3);
-			img -> pixels[i] = vec3Add(g0, px, Pixel3);
+			vec3MulC(delta, delta, d);
+			vec3Add(img -> pixels[i], g0, delta);
 		} else { //Edges
 			float d = ((mag - sigma) * beta) + sigma;
-			Pixel3 px = vec3MulC(delta, d, Pixel3);
-			img -> pixels[i] = vec3Add(g0, px, Pixel3);
+			vec3MulC(delta, delta, d);
+			vec3Add(img -> pixels[i], g0, delta);
 		}
 	}
 }

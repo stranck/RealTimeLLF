@@ -5,7 +5,7 @@
 void remap(Image3 * img, Pixel3 g0, float sigma, float alpha, float beta);
 
 #define KERNEL_DIMENSION 5
-#define getKernelPosition(x, y)({x * KERNEL_DIMENSION + y;})
+#define getKernelPosition(x, y)(x * KERNEL_DIMENSION + y)
 Kernel createFilter();
 void destroyFilter(Kernel *filter);
 

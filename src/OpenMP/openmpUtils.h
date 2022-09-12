@@ -10,4 +10,4 @@ void updateLevelInfo(CurrentLevelInfo *cli, uint32_t *pyrDimensions, Pyramid gau
 
 void imgcpy3_parallel(Image3 *dest, Image3 *source, const uint8_t nThreads);
 
-#define getThreadId()({omp_get_thread_num();})
+#define getThreadId()(omp_get_thread_num())

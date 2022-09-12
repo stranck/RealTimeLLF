@@ -1,6 +1,5 @@
 #include "cudaUtils.cuh"
 
-
 __host__ Kernel createFilterDevice(){
 	const float params[KERNEL_DIMENSION] = {0.05, 0.25, 0.4, 0.25, 0.05};
 	float h_filter[KERNEL_DIMENSION * KERNEL_DIMENSION];
@@ -35,7 +34,7 @@ __device__ Pyramid d_createPyramid(uint32_t width, uint32_t height, uint8_t nLev
 }
 __host__ Pyramid createPyramidDevice(uint32_t width, uint32_t height, uint8_t nLevels){
 	nLevels++; //Pyramids has one more layer!
-	Pyramid h_p = (Pyramid) alloca(nLevels * sizeof(Image3*));
+	Pyramid h_p = (Pyramid) allocStack(nLevels * sizeof(Image3*));
 	for(uint8_t i = 0; i < nLevels; i++){
 		h_p[i] = makeImage3Device(width, height);
 		width = width / 2 + (width & 1);
@@ -54,7 +53,7 @@ __device__ void d_destroydPyramid(Pyramid pyr, uint8_t nLevels){
 	cudaFree(pyr);
 }
 __host__ void destroyPyramidDevice(Pyramid d_pyr, uint8_t h_nLevels){
-	Pyramid h_pyr = (Pyramid) alloca((h_nLevels + 1)* sizeof(Image3*));
+	Pyramid h_pyr = (Pyramid) allocStack((h_nLevels + 1)* sizeof(Image3*));
 	CHECK(cudaMemcpy(h_pyr, d_pyr, (h_nLevels + 1) * sizeof(Image3*), cudaMemcpyDeviceToHost));
 	for(uint8_t i = 0; i <= h_nLevels; i++)
 		destroyImage3Device(h_pyr[i]);
@@ -140,7 +139,7 @@ __global__ void d_copyPyrLevel(Pyramid dst_pyr, Pyramid src_pyr, uint8_t level){
 } 
 
 __host__ Image3 * getImageFromPyramidDevice(Pyramid d_pyr, uint8_t h_level){
-	Pyramid h_pyr = (Pyramid) alloca((h_level + 1) * sizeof(Image3*)); //We just need to copy up to level pointers;
+	Pyramid h_pyr = (Pyramid) allocStack((h_level + 1) * sizeof(Image3*)); //We just need to copy up to level pointers;
 	CHECK(cudaMemcpy(h_pyr, d_pyr, (h_level + 1) * sizeof(Image3*), cudaMemcpyDeviceToHost));
 	return h_pyr[h_level];
 }
@@ -252,9 +251,10 @@ __device__ float d_smoothstep(float a, float b, float u) {
 }
 
 __device__ inline Pixel3 d_remapSinglePixel(const Pixel3 source, const Pixel3 g0, float sigma, float alpha, float beta){
-	Pixel3 delta = vec3Sub(source, g0, Pixel3);
+	Pixel3 delta;
+	vec3Sub(delta, source, g0);
 	float mag = sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
-	if(mag > 1e-10) delta = vec3DivC(delta, mag, Pixel3);
+	if(mag > 1e-10) vec3DivC(delta, delta, mag);
 
 	int details = mag < sigma;
 	float fraction = mag / sigma;
@@ -265,8 +265,9 @@ __device__ inline Pixel3 d_remapSinglePixel(const Pixel3 source, const Pixel3 g0
 		polynomial = blend * polynomial + (1 - blend) * fraction;
 	}
 	float d = (sigma * polynomial) * details + (((mag - sigma) * beta) + sigma) * (1 - details);
-	Pixel3 px = vec3MulC(delta, d, Pixel3);
-	return vec3Add(g0, px, Pixel3);
+	vec3MulC(delta, delta, d);
+	vec3Add(delta, g0, delta);
+	return delta;
 }
 __device__ void d_remap(Image3 * img, const Pixel3 g0, float sigma, float alpha, float beta){
 	uint32_t dim = img -> width * img -> height;

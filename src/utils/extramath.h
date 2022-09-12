@@ -2,8 +2,8 @@
 
 #include <math.h>
 
-#define min(a, b) ({ (a < b) ? a : b; })
-#define max(a, b) ({ (a > b) ? a : b; })
+#define min(a, b) ( (a < b) ? a : b )
+#define max(a, b) ( (a > b) ? a : b )
 
 inline float clamp(float a, float min_, float max_) {
 	float m = max(a, min_);

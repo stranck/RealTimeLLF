@@ -9,12 +9,10 @@ typedef struct {
 	Pyramid bufferLaplacianPyramid;
 } Buffers;
 
-#define createBuffers(width, height, nLevels)({\
-	Buffers b;\
-	b.bufferGaussPyramid = createPyramid(width, height, nLevels);\
-	b.bufferLaplacianPyramid = createPyramid(width, height, nLevels);\
-	b;\
-})
+#define createBuffers(dest, width, height, nLevels){\
+	(dest).bufferGaussPyramid = createPyramid(width, height, nLevels);\
+	(dest).bufferLaplacianPyramid = createPyramid(width, height, nLevels);\
+}
 
 typedef struct {
 	uint8_t currentNLevels;
