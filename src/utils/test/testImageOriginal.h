@@ -9,19 +9,21 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+const uint32_t DATA[] = {
+	0x10000000
+};
+
 Image4 * getStaticImage4(){
 	const uint32_t width = 10, height = 10;
 	const uint32_t dim = width * height;
-	uint32_t data[] = {
-		0x10000000
-	};
+
 	Pixel4 *pxs = (Pixel4 *) malloc(width * height * sizeof(Pixel4));
 	for(uint32_t i = 0; i < dim; i++){
 		// 1 : out = 255 : in
-		uint8_t r = (data[i] >> 24) & 0xff;
-		uint8_t g = (data[i] >> 16) & 0xff;
-		uint8_t b = (data[i] >> 8) & 0xff;
-		uint8_t a = data[i] & 0xff;
+		uint8_t r = (DATA[i] >> 24) & 0xff;
+		uint8_t g = (DATA[i] >> 16) & 0xff;
+		uint8_t b = (DATA[i] >> 8) & 0xff;
+		uint8_t a = DATA[i] & 0xff;
 		Pixel4 p = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f};
 		pxs[i] = p;
 	}
