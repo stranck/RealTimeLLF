@@ -3,9 +3,11 @@
 #include "../CUDA/cuda.cuh"
 #include <cuda/semaphore>
 
-cuda::counting_semaphore<cuda::thread_scope_system, 1> frameAvailable;
+volatile bool working = false;
+volatile uint32_t widthIn = 0, heightIn = 0, widthOut = 1, heightOut = 1;
+cuda::counting_semaphore<cuda::thread_scope_system> frameAvailable;
 cuda::counting_semaphore<cuda::thread_scope_system> hostSemaphore;
-volatile uint32_t widthIn = 0, heightIn = 0, widthOut = 0, heightOut = 0;
+cuda::counting_semaphore<cuda::thread_scope_system> cleanupDone;
 uint64_t lastDeviceBufferDimension = 0;
 uint64_t lastHostBufferDimension = 0;
 CUDAbuffers *cudaBuffers;
@@ -60,12 +62,20 @@ void writeOutputFrame(NDIlib_video_frame_v2_t *ndiVideoFrame){
 	uint64_t frameDimensionBytes = lastHostBufferDimension * sizeof(Pixel4u8);
 	ndiVideoFrame->xres = min(ndiVideoFrame->xres, widthOut);
 	ndiVideoFrame->yres = min(ndiVideoFrame->yres, heightOut);
-	uint64_t outFrameDim = widthOut * heightOut * sizeof(Pixel4u8);
+	uint64_t outFrameDim = ndiVideoFrame->xres * ndiVideoFrame->yres * sizeof(Pixel4u8);
 	frameDimensionBytes = min(frameDimensionBytes, outFrameDim);
 	memcpy(ndiVideoFrame->p_data, hostT2Nbuffer, frameDimensionBytes);
 	hostSemaphore.release();
 }
 
+void destroyProcessingThread(){
+	if(working){
+		print("Waiting for processing thread to finish loop");
+		working = false;
+		frameAvailable.release(); //Release if thread was waiting for a frame
+		cleanupDone.acquire(); //wait for thread to finish
+	}
+}
 
 void initProcessingThread(){
 	hostN2Tbuffer = (Pixel4u8 *) malloc(1);
@@ -79,7 +89,8 @@ void initProcessingThread(){
 }
 void gpuProcessingThread(){
 	initProcessingThread();
-	while(true){
+	working = true;
+	while(working){
 		frameAvailable.acquire(); //Wait for an available frame
 
 		hostSemaphore.acquire(); //Copies the image locally
@@ -114,4 +125,12 @@ void gpuProcessingThread(){
 		}
 		hostSemaphore.release();
 	}
+
+	print("Processing thread is destroying his stuff");
+	free(hostN2Tbuffer);
+	free(hostT2Nbuffer);
+	destroyImage3(&workingImage);
+	destroyCUDAbuffers(cudaBuffers, _nLevels);
+	cleanupDone.release();
+	print("Processing thread is done");
 }

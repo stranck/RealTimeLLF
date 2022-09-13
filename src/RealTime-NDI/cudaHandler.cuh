@@ -17,5 +17,6 @@
 void startGpuProcessingThread(float sigma, float alpha, float beta, uint8_t nLevels, uint32_t nThreads, uint32_t nBlocks);
 void handleIncomingFrame(NDIlib_video_frame_v2_t *ndiVideoFrame);
 void writeOutputFrame(NDIlib_video_frame_v2_t *ndiVideoFrame);
+void destroyProcessingThread();
 void initProcessingThread();
 void gpuProcessingThread();

@@ -23,11 +23,15 @@ NDIlib_find_instance_t ndiFinder;
 NDIlib_send_instance_t ndiSender;
 
 void cleanup(){
+	print("Shutting down NDI");
 	if(ndiReceiver) NDIlib_recv_destroy(ndiReceiver);
 	if(ndiFinder) NDIlib_find_destroy(ndiFinder);
 	if(ndiSender) NDIlib_send_destroy(ndiSender);
 	NDIlib_destroy();
+	puts("Shuttind down processing thread");
+	destroyProcessingThread();
 
+	puts("Bye bye!");
 	exit(0);
 }
 
