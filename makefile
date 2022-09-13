@@ -1,6 +1,7 @@
 GCC := gcc
-ARGS := -O2 -lm -g
+ARGS := -O3 -lm -g
 SRC := src/
+REAL_TIME_NDI := $(SRC)RealTime-NDI/
 OPEN_MP := $(SRC)OpenMP/
 CUDA := $(SRC)cuda/
 LLF := $(SRC)llf/
@@ -14,6 +15,7 @@ clean :
 	rm -rf bin/
 	rm -f tmp/*
 	$(MAKE) -C $(CUDA) clean
+	$(MAKE) -C $(REAL_TIME_NDI) clean
 
 .PHONY : bin
 bin :
@@ -27,6 +29,10 @@ openmp : testimage bin
 cuda : testimage bin
 	$(MAKE) -C $(CUDA)
 
+.PHONY : realtime-ndi
+realtime-ndi : bin
+	$(MAKE) -C $(REAL_TIME_NDI)
+
 .PHONY : llf
 llf : testimage bin
 	$(MAKE) -C $(LLF)
@@ -35,4 +41,4 @@ llf : testimage bin
 testimage :
 	python3 $(SCRIPTS)staticImageConvertI2C.py imgTest/flower.png $(UTILS)test/testimage.h
 
-all : bin openmp cuda llf
+all : clean bin openmp cuda llf realtime-ndi
