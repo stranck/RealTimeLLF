@@ -1,5 +1,5 @@
 GCC := gcc
-COMPILER_ARGS := -O3 -g
+COMPILER_ARGS := -O3 -g -DSHOW_TIME_STATS=1
 LINKER_ARGS := -lm
 BINFOLDR := ../../bin/
 UTILS := ../utils/

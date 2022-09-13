@@ -246,8 +246,10 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels){
 	print("Collapsing");
 	collapse(img, outputLaplacian, nLevels, filter);
 	stopTimerCounter(timeData, passed);
-	printff("Total time: %lums\n", passed);
-	
+	#ifdef SHOW_TIME_STATS
+		printff("Total time: %lums\n", passed);
+	#endif
+
 	destroyPyramid(&gaussPyramid, nLevels);
 	destroyPyramid(&outputLaplacian, nLevels);
 	destroyPyramid(&bufferGaussPyramid, nLevels);

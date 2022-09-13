@@ -340,8 +340,9 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, con
 	print("Collapsing");
 	collapse(img, outputLaplacian, nLevels, filter, nThreads);
 	stopTimerCounter(timeData, passed);
-	printff("Total time: %lums\n", passed);
-
+	#ifdef SHOW_TIME_STATS
+		printff("Total time: %lums\n", passed);
+	#endif
 	destroyPyramid(&gaussPyramid, nLevels);
 	destroyPyramid(&outputLaplacian, nLevels);
 	for(uint8_t i = 0; i < nThreads; i++){

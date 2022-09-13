@@ -500,7 +500,7 @@ __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uin
 
 	uint32_t h_width = h_img->width, h_height = h_img->height;
 	h_nLevels = min(h_nLevels, MAX_LAYERS);
-	h_nLevels = max(h_nLevels, 3);//int(ceil(std::abs(std::log2(min(width, height)) - 3))) + 2;
+	h_nLevels = max(h_nLevels, 2);//int(ceil(std::abs(std::log2(min(width, height)) - 3))) + 2;
 	Kernel d_filter = createFilterDevice();
 	Pyramid d_gaussPyramid = createPyramidDevice(h_width, h_height, h_nLevels);
 	Pyramid d_outputLaplacian = createPyramidDevice(h_width, h_height, h_nLevels);
@@ -523,8 +523,9 @@ __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uin
 	collapse<<<1, h_nThreads>>>(d_img, d_outputLaplacian, h_nLevels, d_filter);
 	CHECK(cudaDeviceSynchronize());
 	stopTimerCounter(timeData, passed);
-	printff("Total time: %lums\n", passed);
-
+	#ifdef SHOW_TIME_STATS
+		printff("Total time: %lums\n", passed);
+	#endif
 	d_clampImage3<<<(((h_width * h_height) + h_nThreads - 1) / h_nThreads), h_nThreads>>>(d_img);
 	CHECK(cudaDeviceSynchronize());
 
@@ -550,7 +551,7 @@ int main(int argc, char const *argv[]){
 	AlphaMap map = getAlphaMap(img4);
 	destroyImage4(&img4);
 
-	llf(img, 0.35, 0.4, 5, 3, threadsNo, blocksNo);
+	llf(img, 0.35, 0.4, 5, 2, threadsNo, blocksNo);
 
 	img4 = image3to4AlphaMap(img, map);
 	destroyImage3(&img);

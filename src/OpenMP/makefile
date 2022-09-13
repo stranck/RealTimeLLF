@@ -1,5 +1,5 @@
 GCC := g++
-ARGS := -O3 -lm -g -ggdb -fopenmp
+ARGS := -O3 -lm -g -ggdb -fopenmp -DSHOW_TIME_STATS=1
 LINKER_ARGS := -lm
 BINFOLDR := ../../bin/
 UTILS := ../utils/

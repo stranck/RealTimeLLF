@@ -1,5 +1,5 @@
 GCC := nvcc
-ARGS := -O0 -arch=sm_60 -lineinfo -g #-dopt off
+ARGS := -O3 -arch=sm_60 -lineinfo -g -DSHOW_TIME_STATS=1 #-dopt off
 BINFOLDR := ../../bin/
 UTILS := ../utils/
 
@@ -23,4 +23,4 @@ cuda: cuda.o cudaUtils.o $(UTILS)imageutils.cpp $(UTILS)utils.cpp
 	$(GCC) $(ARGS) $^ -o $(BINFOLDR)$@
 
 .PHONY: all
-all: cuda #clean
+all: cuda clean
