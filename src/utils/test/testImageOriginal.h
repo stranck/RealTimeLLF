@@ -36,7 +36,7 @@ void printStaticImage4(Image4 *img){
 	const uint32_t width = img->width;
 	const uint32_t height = img->height;
 	printf("STATIC_IMG_DIMENSIONS: %d %d\n", width, height);
-	Vec4u8 *buffer = (Vec4u8 *) calloc(width, sizeof(Vec4u8));
+	Pixel4u8 *buffer = (Pixel4u8 *) calloc(width, sizeof(Pixel4u8));
 	for(uint32_t i = 0; i < height; i++){
 		Pixel4 *currentLine = &pxs[width * i];
 		for(uint32_t j = 0; j < width; j++){
@@ -45,7 +45,7 @@ void printStaticImage4(Image4 *img){
 			buffer[j].z = roundfu8(255.0f * currentLine[j].z);
 			buffer[j].w = roundfu8(255.0f * currentLine[j].w);
 		}
-		printBuffer((uint8_t *) buffer, width * sizeof(Vec4u8));
+		printBuffer((uint8_t *) buffer, width * sizeof(Pixel4u8));
 		puts("");
 	}
 }

@@ -5,6 +5,8 @@
 
 typedef Vec4f Pixel4;
 typedef Vec3f Pixel3;
+typedef Vec4u8 Pixel4u8;
+typedef Vec3u8 Pixel3u8;
 typedef uint8_t* AlphaMap;
 typedef float* Kernel;
 
