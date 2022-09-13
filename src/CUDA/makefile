@@ -10,16 +10,19 @@ cudaUtils.o: cudaUtils.cu
 	$(GCC) $(ARGS) -dc $^ -o $@
 cuda.o: cuda.cu
 	$(GCC) $(ARGS) -dc $^ -o $@
+mainCuda.o: mainCuda.cu
+	$(GCC) $(ARGS) -dc $^ -o $@
 
 .PHONY: clean
 clean:
-	rm -f cudaUtils.o
-	rm -f bufferManager.o
-	rm -f cuda.o
 	rm -f vc140.pdb
+	rm -f bufferManager.o
+	rm -f cudaUtils.o
+	rm -f mainCuda.o
+	rm -f cuda.o
 
 .PHONY: cuda
-cuda: cuda.o cudaUtils.o $(UTILS)imageutils.cpp $(UTILS)utils.cpp
+cuda: mainCuda.o cuda.o cudaUtils.o $(UTILS)imageutils.cpp $(UTILS)utils.cpp
 	$(GCC) $(ARGS) $^ -o $(BINFOLDR)$@
 
 .PHONY: all

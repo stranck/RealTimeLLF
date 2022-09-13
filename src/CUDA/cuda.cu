@@ -1,6 +1,9 @@
 #include "cuda.cuh"
 
-#include "../utils/test/testimage.h"
+#ifdef CUDA_INCLUDE
+	#include <cuda.h>
+	#include <cuda_runtime.h>
+#endif
 
 __device__ Pixel3 upsampleConvolveSubtractSinglePixel_shared(Pixel3 *srcPx, uint32_t smallWidth, uint32_t smallHeight, Pixel3 gaussPx, Kernel kernel, uint32_t i, uint32_t j, Pixel3 *convolveWorkingBuffer){
 	const int32_t  xstart = -1 * KERNEL_DIMENSION / 2;
@@ -494,18 +497,18 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 	}
 }
 
-__host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uint8_t h_nLevels, uint32_t h_nThreads, uint32_t h_elementsNo){
+__host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uint8_t h_nLevels, uint32_t h_nThreads, uint32_t h_elementsNo, CUDAbuffers *h_cudaBuffers){
 	TimeData timeData;
 	TimeCounter passed = 0;
 
 	uint32_t h_width = h_img->width, h_height = h_img->height;
 	h_nLevels = min(h_nLevels, MAX_LAYERS);
 	h_nLevels = max(h_nLevels, 2);//int(ceil(std::abs(std::log2(min(width, height)) - 3))) + 2;
-	Kernel d_filter = createFilterDevice();
-	Pyramid d_gaussPyramid = createPyramidDevice(h_width, h_height, h_nLevels);
-	Pyramid d_outputLaplacian = createPyramidDevice(h_width, h_height, h_nLevels);
+	Kernel d_filter = h_cudaBuffers->d_filter;
+	Pyramid d_gaussPyramid = h_cudaBuffers->d_gaussPyramid;
+	Pyramid d_outputLaplacian = h_cudaBuffers->d_outputLaplacian;
 
-	Image3 *d_img = makeImage3Device(h_width, h_height);
+	Image3 *d_img = h_cudaBuffers->d_img;
 	copyImg3Host2Device(d_img, h_img);
 	startTimerCounter(timeData);
 	gaussianPyramid<<<1, h_nThreads>>>(d_gaussPyramid, d_img, h_nLevels, d_filter);
@@ -530,31 +533,18 @@ __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uin
 	CHECK(cudaDeviceSynchronize());
 
 	copyImg3Device2Host(h_img, d_img);
-
-	destroyImage3Device(d_img);
-	destroyPyramidDevice(d_gaussPyramid, h_nLevels);
-	destroyPyramidDevice(d_outputLaplacian, h_nLevels);
-	destroyFilterDevice(d_filter);
 }
 
+__host__ void initCUDAbuffers(CUDAbuffers *h_cudaBuffers, uint32_t h_width, uint32_t h_height, uint8_t h_nLevels){
+	h_cudaBuffers->d_outputLaplacian = createPyramidDevice(h_width, h_height, h_nLevels);
+	h_cudaBuffers->d_gaussPyramid = createPyramidDevice(h_width, h_height, h_nLevels);
+	h_cudaBuffers->d_img = makeImage3Device(h_width, h_height);
+	h_cudaBuffers->d_filter = createFilterDevice();
+}
 
-
-int main(int argc, char const *argv[]){
-	if(argc < 3){
-		printff("Usage: %s <number of blocks> <number of threads>\n", argv[0]);
-		exit(1);
-	}
-	int blocksNo = atoi(argv[1]);
-	int threadsNo = atoi(argv[2]);
-	Image4 *img4 = getStaticImage4();
-	Image3 *img = image4to3(img4);
-	AlphaMap map = getAlphaMap(img4);
-	destroyImage4(&img4);
-
-	llf(img, 0.35, 0.4, 5, 2, threadsNo, blocksNo);
-
-	img4 = image3to4AlphaMap(img, map);
-	destroyImage3(&img);
-	printStaticImage4(img4);
-	destroyImage4(&img4);
+__host__ void destroyCUDAbuffers(CUDAbuffers *h_cudaBuffers, uint8_t h_nLevels){
+	destroyImage3Device(h_cudaBuffers->d_img);
+	destroyPyramidDevice(h_cudaBuffers->d_gaussPyramid, h_nLevels);
+	destroyPyramidDevice(h_cudaBuffers->d_outputLaplacian, h_nLevels);
+	destroyFilterDevice(h_cudaBuffers->d_filter);
 }
