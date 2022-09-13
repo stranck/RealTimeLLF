@@ -1,10 +1,4 @@
 #include "imageutils.h"
-#include "extramath.h"
-#include "utils.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <string.h>
 
 Image4 * makeImage4(uint32_t width, uint32_t height){
 	Pixel4 *img = (Pixel4 *) malloc(width * height * sizeof(Pixel4));

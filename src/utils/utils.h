@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdio.h>
 #include <math.h>
 
 #define dumpMemory(data, len){printBuffer((uint8_t *) data, len); puts(""); fflush(stdout);}

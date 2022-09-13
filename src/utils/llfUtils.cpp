@@ -1,14 +1,5 @@
 #include "llfUtils.h"
 
-#include "imageutils.h"
-#include "extramath.h"
-#include "vects.h"
-#include "utils.h"
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-
 void remap(Image3 * img, const Pixel3 g0, float sigma, float alpha, float beta){
 	uint32_t size = img -> width * img -> height;
 	Pixel3 *pixels = img -> pixels;

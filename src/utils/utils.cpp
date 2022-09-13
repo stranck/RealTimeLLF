@@ -1,6 +1,4 @@
 #include "utils.h"
-#include <stdio.h>
-#include <math.h>
 
 void printBuffer(uint8_t *data, uint32_t len){
 	uint64_t value;
