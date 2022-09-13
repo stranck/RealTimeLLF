@@ -5,7 +5,7 @@
 
 cuda::counting_semaphore<cuda::thread_scope_system, 1> frameAvailable;
 cuda::counting_semaphore<cuda::thread_scope_system> hostSemaphore;
-volatile uint32_t width = 0, height = 0;
+volatile uint32_t widthIn = 0, heightIn = 0, widthOut = 0, heightOut = 0;
 uint64_t lastDeviceBufferDimension = 0;
 uint64_t lastHostBufferDimension = 0;
 CUDAbuffers *cudaBuffers;
@@ -40,9 +40,9 @@ void startGpuProcessingThread(float sigma, float alpha, float beta, uint8_t nLev
 
 void handleIncomingFrame(NDIlib_video_frame_v2_t *ndiVideoFrame){
 	hostSemaphore.acquire();
-	width = ndiVideoFrame->xres;
-	height = ndiVideoFrame->yres;
-	uint64_t frameDimension = width * height;
+	widthIn = ndiVideoFrame->xres;
+	heightIn = ndiVideoFrame->yres;
+	uint64_t frameDimension = widthIn * heightIn;
 	uint64_t frameDimensionBytes = frameDimension * sizeof(Pixel4u8);
 	if(frameDimension > lastHostBufferDimension){ //so we don't reduce the size before we output the rendered frame
 		free(hostN2Tbuffer);
@@ -58,7 +58,9 @@ void handleIncomingFrame(NDIlib_video_frame_v2_t *ndiVideoFrame){
 void writeOutputFrame(NDIlib_video_frame_v2_t *ndiVideoFrame){
 	hostSemaphore.acquire();
 	uint64_t frameDimensionBytes = lastHostBufferDimension * sizeof(Pixel4u8);
-	uint64_t outFrameDim = ndiVideoFrame->xres * ndiVideoFrame->yres * sizeof(Pixel4u8);
+	ndiVideoFrame->xres = min(ndiVideoFrame->xres, widthOut);
+	ndiVideoFrame->yres = min(ndiVideoFrame->yres, heightOut);
+	uint64_t outFrameDim = widthOut * heightOut * sizeof(Pixel4u8);
 	frameDimensionBytes = min(frameDimensionBytes, outFrameDim);
 	memcpy(ndiVideoFrame->p_data, hostT2Nbuffer, frameDimensionBytes);
 	hostSemaphore.release();
@@ -81,14 +83,14 @@ void gpuProcessingThread(){
 		frameAvailable.acquire(); //Wait for an available frame
 
 		hostSemaphore.acquire(); //Copies the image locally
-		workingImage->width = width;
-		workingImage->height = height;
-		uint32_t dim = width * height;
+		workingImage->width = widthIn;
+		workingImage->height = heightIn;
+		uint32_t dim = widthIn * heightIn;
 		if(dim > lastDeviceBufferDimension){
 			destroyImage3(&workingImage);
 			destroyCUDAbuffers(cudaBuffers, _nLevels);
-			initCUDAbuffers(cudaBuffers, width, height, _nLevels);
-			workingImage = makeImage3(width, height);
+			initCUDAbuffers(cudaBuffers, widthIn, heightIn, _nLevels);
+			workingImage = makeImage3(widthIn, heightIn);
 			lastDeviceBufferDimension = dim;
 		}
 		Pixel3 *pxs = workingImage->pixels;
@@ -102,6 +104,8 @@ void gpuProcessingThread(){
 		llf(workingImage, _sigma, _alpha, _beta, _nLevels, _nThreads, _nBlocks, cudaBuffers);
 
 		hostSemaphore.acquire();
+		widthOut = workingImage->width;
+		heightOut = workingImage->height;
 		for(uint32_t i = 0; i < dim; i++){
 			hostT2Nbuffer[i].x = roundfu8(255.0f * pxs[i].x);
 			hostT2Nbuffer[i].y = roundfu8(255.0f * pxs[i].y);
