@@ -14,7 +14,6 @@ int main(){
 	llf(img, 0.35, 0.4, 5, nLevels, &workingBuffers);
 	destroyWorkingBuffers(&workingBuffers, nLevels);
 
-	clampImage3(img);
 	img4 = image3to4AlphaMap(img, map);
 	destroyImage3(&img);
 	printStaticImage4(img4);

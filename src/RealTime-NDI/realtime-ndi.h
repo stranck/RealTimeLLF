@@ -7,6 +7,9 @@
 #include "../utils/utils.h"
 #include "processingHandler.h"
 
+//#define CUDA_VERSION 0
+//#define OPENMP_VERSION 0
+
 #ifdef ON_WINDOWS
 	#ifdef _WIN64
 		#pragma comment(lib, "Processing.NDI.Lib.x64.lib")

@@ -36,6 +36,8 @@ void cleanup(){
 }
 
 int main(int argc, char const *argv[]){
+
+	
 	#ifdef ON_WINDOWS
 		SetConsoleCtrlHandler(consoleHandler, true);
 	#else
@@ -78,7 +80,13 @@ int main(int argc, char const *argv[]){
 	if (!ndiReceiver) return 0;
 
 	NDIlib_find_destroy(ndiFinder); ndiFinder = NULL;
-	startGpuProcessingThread(0.35, 0.4, 5, 2, 256, 512);
+	#if CUDA_VERSION
+		startGpuProcessingThread(0.35, 0.4, 5, 2, 256, 512);
+	#elif OPENMP_VERSION
+		startGpuProcessingThread(0.35, 0.4, 5, 3, 22);
+	#else
+		startGpuProcessingThread(0.35, 0.4, 5, 3);
+	#endif
 
 	NDIlib_video_frame_v2_t *ndiVideoFrame = new NDIlib_video_frame_v2_t;
 	while(true){

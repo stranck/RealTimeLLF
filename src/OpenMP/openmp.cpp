@@ -84,7 +84,7 @@ void upsampleConvolve_parallel(Image3 *dest, Image3 *source, Kernel kernel, cons
 	const uint32_t dim = uppedH * uppedW;
 
 	#pragma omp parallel for num_threads(nThreads) schedule(static)
-	for (uint32_t idx = 0; idx < dim; idx++) {
+	for (int32_t idx = 0; idx < dim; idx++) {
 		uint32_t i = idx % uppedW, j = idx / uppedW;
 
 		Pixel3 c = zero3vect;
@@ -143,7 +143,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 		upsampleConvolve_parallel(dest, currentLevel, filter, nThreads);
 		uint32_t sizeUpsampled = llf_min(dest->width, biggerLevel->width) * llf_min(dest->height, biggerLevel->height);
 		#pragma omp parallel for num_threads(nThreads) schedule(static, 8)
-		for(uint32_t px = 0; px < sizeUpsampled; px++)	
+		for(int32_t px = 0; px < sizeUpsampled; px++)	
 			vec3Add(biggerLevelPxs[px], destPxs[px], biggerLevelPxs[px]);
 		biggerLevel->width = dest->width;
 		biggerLevel->height = dest->height; //This could cause disalignment problem
@@ -154,7 +154,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 	upsampleConvolve_parallel(dest, currentLevel, filter, nThreads);
 	uint32_t sizeUpsampled = llf_min(dest->width, biggerLevel->width) * llf_min(dest->height, biggerLevel->height);
 	#pragma omp parallel for num_threads(nThreads) schedule(static, 8)
-	for(uint32_t px = 0; px < sizeUpsampled; px++)
+	for(int32_t px = 0; px < sizeUpsampled; px++)
 		vec3Add(destPxs[px], destPxs[px], biggerLevelPxs[px]);
 }
 
@@ -217,7 +217,7 @@ void downsampleConvolve_parallel(Image3 *dest, Image3 *source, uint32_t *width, 
 	const uint32_t dim = (originalH - startingY * 2) * originalW; //not *2 on w because we need one extra pixel at the end of the line for the +=2 to work
 
 	#pragma omp parallel for num_threads(nThreads) schedule(static)
-	for(uint32_t idx = 0; idx < dim; idx += 2){
+	for(int32_t idx = 0; idx < dim; idx += 2){
 		uint32_t i = (idx % originalW) + startingX, j = (idx / originalW) + startingY;
 
 		Pixel3 c = zero3vect;
@@ -289,11 +289,11 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, con
 	TimeData timeData;
 	TimeCounter passed = 0;
 
-	print("Creating first gauss pyramid");
+	//print("Creating first gauss pyramid");
 	startTimerCounter(timeData);
 	gaussianPyramid_parallel(gaussPyramid, img, nLevels, filter, nThreads);
 	stopTimerCounter(timeData, passed);
-	print("Entering main loop");
+	//print("Entering main loop");
 	// Sadly, due to approxxximation in the downsample function, I can't use sum to calculate the pyramid dimension :(
 	//uint32_t t = (0b100 << (nLevels * 2));
 	//uint32_t end = (img->width * img->height * ((t - 1) / 3)) / (t / 4); //sum[i=0, n] D / 4^i
@@ -308,14 +308,14 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, con
 
 	startTimerCounter(timeData);
 	#pragma omp parallel for num_threads(nThreads) schedule(dynamic)
-	for(uint32_t idx = 0; idx < workingBuffers->end; idx++){
+	for(int32_t idx = 0; idx < workingBuffers->end; idx++){
 		int threadId = getThreadId();
 		CurrentLevelInfo *cli = &(cliArr[threadId]);
 		Pyramid bufferGaussPyramid = workingBuffers->bArr[threadId];
 
 		if(idx >= cli->nextLevelDimension) //Assuming ofc that idk only goes up for each thread
 			updateLevelInfo(cli, pyrDimensions, gaussPyramid);
-		uint32_t localIdx = idx - cli->prevLevelDimension;
+		int32_t localIdx = idx - cli->prevLevelDimension;
 
 		uint8_t lev = cli->lev;
 		Image3 *currentGaussLevel = cli->currentGaussLevel;
@@ -353,12 +353,14 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, con
 	}
 
 	imgcpy3_parallel(outputLaplacian[nLevels], gaussPyramid[nLevels], nThreads);
-	print("Collapsing");
+	//print("Collapsing");
 	collapse(img, outputLaplacian, nLevels, filter, nThreads);
 	stopTimerCounter(timeData, passed);
 	#ifdef SHOW_TIME_STATS
 		printff("Total time: %lums\n", passed);
 	#endif
+
+	clampImage3(img);
 }
 
 void initWorkingBuffers(WorkingBuffers *workingBuffers, uint32_t width, uint32_t height, uint8_t nLevels, uint8_t nThreads){

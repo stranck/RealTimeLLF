@@ -189,14 +189,14 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, Wor
 	TimeData timeData;
 	TimeCounter passed = 0;
 
-	print("Creating first gauss pyramid");
+	//print("Creating first gauss pyramid");
 	startTimerCounter(timeData);
 	gaussianPyramid(gaussPyramid, img, nLevels, filter);
 	stopTimerCounter(timeData, passed);
-	print("Entering main loop");
+	//print("Entering main loop");
 	startTimerCounter(timeData);
 	for(uint8_t lev = 0; lev < nLevels; lev++){
-		printff("laplacian inner loop %d/%d\n", lev, (nLevels - 1));
+		//printff("laplacian inner loop %d/%d\n", lev, (nLevels - 1));
 		Image3 *currentGaussLevel = gaussPyramid[lev];
 		uint32_t gaussianWidth = currentGaussLevel->width, gaussianHeight = currentGaussLevel->height;
 		uint32_t subregionDimension = 3 * ((1 << (lev + 2)) - 1) / 2;
@@ -233,15 +233,18 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, Wor
 		}
 	}
 	imgcpy3(outputLaplacian[nLevels], gaussPyramid[nLevels]);
-	print("Collapsing");
+	//print("Collapsing");
 	collapse(img, outputLaplacian, nLevels, filter);
 	stopTimerCounter(timeData, passed);
 	#ifdef SHOW_TIME_STATS
 		printff("Total time: %lums\n", passed);
 	#endif
+
+	clampImage3(img);
 }
 
 void initWorkingBuffers(WorkingBuffers *workingBuffers, uint32_t width, uint32_t height, uint8_t nLevels){
+	printff("Creating pyramids %dx%d @ %d levels\n", width, height, nLevels);
 	workingBuffers->bufferLaplacianPyramid = createPyramid(width, height, nLevels);
 	workingBuffers->bufferGaussPyramid = createPyramid(width, height, nLevels);
 	workingBuffers->outputLaplacian = createPyramid(width, height, nLevels);

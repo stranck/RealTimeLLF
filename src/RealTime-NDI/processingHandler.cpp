@@ -1,9 +1,15 @@
 #include "processingHandler.h"
-#include "semaphore.hpp"
-#include "../CUDA/cuda.cuh"
+
+#if CUDA_VERSION
+	#include "../CUDA/cuda.cuh"
+#elif OPENMP_VERSION
+	#include "../OpenMP/openmp.h"
+#else
+	#include "../llf/llf.h"
+#endif
 
 volatile bool working = false;
-volatile uint32_t widthIn = 0, heightIn = 0, widthOut = 1, heightOut = 1;
+volatile uint32_t widthIn = 1, heightIn = 1, widthOut = 1, heightOut = 1;
 uint64_t lastDeviceBufferDimension = 0;
 uint64_t lastHostBufferDimension = 0;
 WorkingBuffers *workingBuffers;
@@ -15,7 +21,12 @@ Pixel4u8 *hostT2Nbuffer;
 Image3 *workingImage;
 
 float _sigma, _alpha, _beta;
-uint32_t _nThreads, _nBlocks;
+#if CUDA_VERSION || OPENMP_VERSION
+	uint32_t _nThreads;
+	#if CUDA_VERSION
+		uint32_t _nBlocks;
+	#endif
+#endif
 uint8_t _nLevels;
 
 #ifdef ON_WINDOWS
@@ -25,13 +36,25 @@ uint8_t _nLevels;
 	pthread_t gpuProcessingTID;
 	void * gpuProcessingThread_entryPoint(void *param){ gpuProcessingThread(); return NULL; }
 #endif
-void startGpuProcessingThread(float sigma, float alpha, float beta, uint8_t nLevels, uint32_t nThreads, uint32_t nBlocks){
+
+#if CUDA_VERSION
+	void startGpuProcessingThread(float sigma, float alpha, float beta, uint8_t nLevels, uint32_t nThreads, uint32_t nBlocks){
+#elif OPENMP_VERSION
+	void startGpuProcessingThread(float sigma, float alpha, float beta, uint8_t nLevels, uint32_t nThreads){
+#else
+	void startGpuProcessingThread(float sigma, float alpha, float beta, uint8_t nLevels){
+#endif
 	_sigma = sigma;
 	_alpha = alpha;
 	_beta = beta;
 	_nLevels = nLevels;
-	_nThreads = nThreads;
-	_nBlocks = nBlocks;
+	#if CUDA_VERSION || OPENMP_VERSION
+		_nThreads = nThreads;
+		#if CUDA_VERSION
+			_nBlocks = nBlocks;
+		#endif
+	#endif
+
 	#ifdef ON_WINDOWS
 		CreateThread(NULL, 0, gpuProcessingThread_entryPoint, NULL, 0, gpuProcessingTID);
 	#else
@@ -84,7 +107,11 @@ void initProcessingThread(){
 	workingImage = makeImage3(1, 1);
 
 	workingBuffers = (WorkingBuffers *) malloc(sizeof(WorkingBuffers));
-	initWorkingBuffers(workingBuffers, 200, 200, _nLevels);
+	#if OPENMP_VERSION
+		initWorkingBuffers(workingBuffers, 200, 200, _nLevels, _nThreads);
+	#else
+		initWorkingBuffers(workingBuffers, 200, 200, _nLevels);
+	#endif
 }
 void gpuProcessingThread(){
 	initProcessingThread();
@@ -98,8 +125,13 @@ void gpuProcessingThread(){
 		uint32_t dim = widthIn * heightIn;
 		if(dim > lastDeviceBufferDimension){
 			destroyImage3(&workingImage);
-			destroyWorkingBuffers(workingBuffers, _nLevels);
-			initWorkingBuffers(workingBuffers, widthIn, heightIn, _nLevels);
+			#if OPENMP_VERSION
+				destroyWorkingBuffers(workingBuffers, _nLevels, _nThreads);
+				initWorkingBuffers(workingBuffers, widthIn, heightIn, _nLevels, _nThreads);
+			#else
+				destroyWorkingBuffers(workingBuffers, _nLevels);
+				initWorkingBuffers(workingBuffers, widthIn, heightIn, _nLevels);
+			#endif
 			workingImage = makeImage3(widthIn, heightIn);
 			lastDeviceBufferDimension = dim;
 		}
@@ -111,7 +143,13 @@ void gpuProcessingThread(){
 		}
 		hostSemaphore.release();
 	
-		llf(workingImage, _sigma, _alpha, _beta, _nLevels, _nThreads, _nBlocks, workingBuffers);
+		#if CUDA_VERSION
+			llf(workingImage, _sigma, _alpha, _beta, _nLevels, _nThreads, _nBlocks, workingBuffers);
+		#elif OPENMP_VERSION
+			llf(workingImage, _sigma, _alpha, _beta, _nLevels, _nThreads, workingBuffers);
+		#else
+			llf(workingImage, _sigma, _alpha, _beta, _nLevels, workingBuffers);
+		#endif
 
 		hostSemaphore.acquire();
 		widthOut = workingImage->width;
@@ -129,7 +167,11 @@ void gpuProcessingThread(){
 	free(hostN2Tbuffer);
 	free(hostT2Nbuffer);
 	destroyImage3(&workingImage);
-	destroyWorkingBuffers(workingBuffers, _nLevels);
+	#if OPENMP_VERSION
+		destroyWorkingBuffers(workingBuffers, _nLevels, _nThreads);
+	#else
+		destroyWorkingBuffers(workingBuffers, _nLevels);
+	#endif
 	cleanupDone.release();
 	print("Processing thread is done");
 }

@@ -30,8 +30,16 @@ cuda : testimage bin
 	$(MAKE) -C $(CUDA)
 
 .PHONY : realtime-ndi
-realtime-ndi : bin
-	$(MAKE) -C $(REAL_TIME_NDI)
+realtime-ndi : realtime-ndi-cuda realtime-ndi-openmp realtime-ndi-llf
+.PHONY : realtime-ndi-cuda
+realtime-ndi-cuda : bin
+	$(MAKE) -C $(REAL_TIME_NDI) cuda
+.PHONY : realtime-ndi-openmp
+realtime-ndi-openmp : bin
+	$(MAKE) -C $(REAL_TIME_NDI) openmp
+.PHONY : realtime-ndi-llf
+realtime-ndi-llf : bin
+	$(MAKE) -C $(REAL_TIME_NDI) llf
 
 .PHONY : llf
 llf : testimage bin

@@ -32,7 +32,7 @@ void imgcpy3_parallel(Image3 *dest, Image3 *source, const uint8_t nThreads){
 	uint32_t dim = dest->width * dest->height;
 
 	#pragma omp parallel for num_threads(nThreads) schedule(static, 8)
-	for(uint32_t i = 0; i < dim; i++){
+	for(int32_t i = 0; i < dim; i++){
 		dest->pixels[i] = source->pixels[i];
 	}
 }
