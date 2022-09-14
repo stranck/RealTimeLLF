@@ -114,8 +114,8 @@ void laplacianPyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Ker
 		upsampleConvolve(upsampled, tempGauss[i + 1], filter);
 
 		Image3 *current = tempGauss[i];
-		uint32_t yEnd = min(current->height, upsampled->height);
-		uint32_t xEnd = min(current->width, upsampled->width);
+		uint32_t yEnd = llf_min(current->height, upsampled->height);
+		uint32_t xEnd = llf_min(current->width, upsampled->width);
 		for (uint32_t y = 0; y < yEnd; y++){
 			for (uint32_t x = 0; x < xEnd; x++){
 				Pixel3 *upsPtr = getPixel3(upsampled, x, y);
@@ -236,7 +236,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 		Pixel3 *biggerLevelPxs = biggerLevel->pixels;
 
 		upsampleConvolve_parallel(dest, currentLevel, filter, nThreads);
-		uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
+		uint32_t sizeUpsampled = llf_min(dest->width, biggerLevel->width) * llf_min(dest->height, biggerLevel->height);
 		#pragma omp parallel for num_threads(nThreads) schedule(static, 8)
 		for(uint32_t px = 0; px < sizeUpsampled; px++)	
 			vec3Add(biggerLevelPxs[px], destPxs[px], biggerLevelPxs[px]);
@@ -247,7 +247,7 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 	Pixel3 *biggerLevelPxs = biggerLevel->pixels;
 
 	upsampleConvolve_parallel(dest, currentLevel, filter, nThreads);
-	uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
+	uint32_t sizeUpsampled = llf_min(dest->width, biggerLevel->width) * llf_min(dest->height, biggerLevel->height);
 	#pragma omp parallel for num_threads(nThreads) schedule(static, 8)
 	for(uint32_t px = 0; px < sizeUpsampled; px++)
 		vec3Add(destPxs[px], destPxs[px], biggerLevelPxs[px]);
@@ -255,8 +255,8 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 
 void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, const uint8_t nThreads){
 	uint32_t width = img->width, height = img->height;
-	nLevels = min(nLevels, 5);
-	nLevels = max(nLevels, 3);//int(ceil(std::abs(std::log2(min(width, height)) - 3))) + 2;
+	nLevels = llf_min(nLevels, 5);
+	nLevels = llf_max(nLevels, 3);//int(ceil(std::abs(std::log2(llf_min(width, height)) - 3))) + 2;
 	Kernel filter = createFilter();
 
 	Pyramid gaussPyramid = createPyramid(width, height, nLevels);
@@ -314,7 +314,7 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, con
 			uint32_t full_res_y = (1 << lev) * y;
 			uint32_t roi_y1 = full_res_y + subregionDimension + 1;
 			cli->base_y = subregionDimension > full_res_y ? 0 : full_res_y - subregionDimension;
-			cli->end_y = min(roi_y1, height);
+			cli->end_y = llf_min(roi_y1, height);
 			uint32_t full_res_roi_y = full_res_y - cli->base_y;
 			cli->full_res_roi_yShifted = full_res_roi_y >> lev;
 			cli->oldY = y;
@@ -323,7 +323,7 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, con
 		uint32_t full_res_x = (1 << lev) * x;
 		uint32_t roi_x1 = full_res_x + subregionDimension + 1;
 		uint32_t base_x = subregionDimension > full_res_x ? 0 : full_res_x - subregionDimension;
-		uint32_t end_x = min(roi_x1, width);
+		uint32_t end_x = llf_min(roi_x1, width);
 		uint32_t full_res_roi_x = full_res_x - base_x;
 
 		Pixel3 g0 = *getPixel3(currentGaussLevel, x, y);

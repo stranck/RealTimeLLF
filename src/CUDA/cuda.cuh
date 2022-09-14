@@ -1,6 +1,8 @@
 #pragma once
 
-#define CUDA_INCLUDE __CUDACC__ //had to do this to fix vs code intellisense doing random stuff
+#ifdef __CUDACC__ //had to do this to fix vs code intellisense doing random stuff
+	#define CUDA_INCLUDE
+#endif
 
 #define MAX_LAYERS 3 
 #define MAX_PYR_LAYER 3 * ((1 << (MAX_LAYERS + 1)) - 1)

@@ -76,13 +76,13 @@ __device__ void upsampleConvolveSubtract_fast(Image3 *dest, Image3 *source, Imag
 	uint32_t uppedW = smallWidth << 1;
 	uint32_t uppedH = smallHeight << 1;
 	uint32_t currentGaussW = currentGauss->width;
-	uint32_t yEnd = min(currentGauss->height, uppedH);
+	uint32_t yEnd = llf_min(currentGauss->height, uppedH);
 	Pixel3 *destPx = dest->pixels, *srcPx = source->pixels, *crtGssPx = currentGauss->pixels;
 	if(threadIdx.x == 0){
 		dest->width = uppedW;
 		dest->height = uppedH;
 	}
-	uint32_t xEnd = min(currentGaussW, uppedW);
+	uint32_t xEnd = llf_min(currentGaussW, uppedW);
 	const uint8_t  rows = KERNEL_DIMENSION;
 	const uint8_t  cols = KERNEL_DIMENSION;
 	const int32_t  xstart = -1 * cols / 2;
@@ -183,8 +183,8 @@ __device__ void laplacianPyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t n
 
 		Image3 *current = tempGauss[i];
 		Pixel3 *currentPx = current->pixels, *upsampledPx = upsampled->pixels;
-		uint32_t yEnd = min(current->height, upsampled->height);
-		uint32_t xEnd = min(current->width, upsampled->width);
+		uint32_t yEnd = llf_min(current->height, upsampled->height);
+		uint32_t xEnd = llf_min(current->width, upsampled->width);
 		uint32_t dim = xEnd * yEnd;
 		uint32_t max = dim / blockDim.x;
 		for(uint32_t li = 0; li <= max; li++){
@@ -220,7 +220,7 @@ __global__ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Ke
 
 		upsampleConvolve(dest, currentLevel, lcl_filter);
 		//No extra synchtreads needed because there already is one at the end of upsampleConvolve 
-		uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
+		uint32_t sizeUpsampled = llf_min(dest->width, biggerLevel->width) * llf_min(dest->height, biggerLevel->height);
 		uint32_t max = sizeUpsampled / blockDim.x;
 		for(uint32_t i = 0; i <= max; i++){
 			uint32_t px = i * blockDim.x + threadIdx.x;
@@ -238,7 +238,7 @@ __global__ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Ke
 	Pixel3 *biggerLevelPxs = biggerLevel->pixels;
 
 	upsampleConvolve(dest, currentLevel, lcl_filter);
-	uint32_t sizeUpsampled = min(dest->width, biggerLevel->width) * min(dest->height, biggerLevel->height);
+	uint32_t sizeUpsampled = llf_min(dest->width, biggerLevel->width) * llf_min(dest->height, biggerLevel->height);
 	max = sizeUpsampled / blockDim.x;
 	for(uint32_t i = 0; i <= max; i++){
 		uint32_t px = i * blockDim.x + threadIdx.x;
@@ -438,8 +438,8 @@ __global__ void gaussianPyramid(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLeve
 __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width, uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, float sigma, float alpha, float beta, uint16_t elementsNo){
 	__shared__ Pixel3 g0;
 	__shared__ float lcl_filter[KERNEL_DIMENSION * KERNEL_DIMENSION];
-	__shared__ Pixel3 convolveWorkingBuffer[max(MAX_PYR_LAYER * MAX_PYR_LAYER, KERNEL_DIMENSION * KERNEL_DIMENSION)];
-	__shared__ Pixel3 convolveWorkingBuffer2[max(MAX_PYR_LAYER * MAX_PYR_LAYER, KERNEL_DIMENSION * KERNEL_DIMENSION)];
+	__shared__ Pixel3 convolveWorkingBuffer[llf_max(MAX_PYR_LAYER * MAX_PYR_LAYER, KERNEL_DIMENSION * KERNEL_DIMENSION)];
+	__shared__ Pixel3 convolveWorkingBuffer2[llf_max(MAX_PYR_LAYER * MAX_PYR_LAYER, KERNEL_DIMENSION * KERNEL_DIMENSION)];
 	Pixel3 *sourceBigDest = convolveWorkingBuffer, *destSmall = convolveWorkingBuffer2;
 	uint32_t dim = KERNEL_DIMENSION * KERNEL_DIMENSION;
 	uint32_t max = dim / blockDim.x;
@@ -468,16 +468,16 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 		int32_t full_res_y = (1 << lev) * y;
 		int32_t roi_y0 = full_res_y - subregionDimension;
 		int32_t roi_y1 = full_res_y + subregionDimension + 1;
-		int32_t base_y = max(0, roi_y0);
-		int32_t end_y = min(roi_y1, height);
+		int32_t base_y = llf_max(0, roi_y0);
+		int32_t end_y = llf_min(roi_y1, height);
 		int32_t full_res_roi_y = full_res_y - base_y;
 		int32_t full_res_roi_yShifted = full_res_roi_y >> lev;
 
 		int32_t full_res_x = (1 << lev) * x;
 		int32_t roi_x0 = full_res_x - subregionDimension;
 		int32_t roi_x1 = full_res_x + subregionDimension + 1;
-		int32_t base_x = max(0, roi_x0);
-		int32_t end_x = min(roi_x1, width);
+		int32_t base_x = llf_max(0, roi_x0);
+		int32_t end_x = llf_min(roi_x1, width);
 		int32_t full_res_roi_x = full_res_x - base_x;
 		int32_t full_res_roi_xShifted = full_res_roi_x >> lev;
 
@@ -502,8 +502,8 @@ __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uin
 	TimeCounter passed = 0;
 
 	uint32_t h_width = h_img->width, h_height = h_img->height;
-	h_nLevels = min(h_nLevels, MAX_LAYERS);
-	h_nLevels = max(h_nLevels, 2);//int(ceil(std::abs(std::log2(min(width, height)) - 3))) + 2;
+	h_nLevels = llf_min(h_nLevels, MAX_LAYERS);
+	h_nLevels = llf_max(h_nLevels, 2);//int(ceil(std::abs(std::log2(llf_min(width, height)) - 3))) + 2;
 	Kernel d_filter = h_cudaBuffers->d_filter;
 	Pyramid d_gaussPyramid = h_cudaBuffers->d_gaussPyramid;
 	Pyramid d_outputLaplacian = h_cudaBuffers->d_outputLaplacian;

@@ -2,12 +2,12 @@
 
 #include <math.h>
 
-#define min(a, b) ( (a < b) ? a : b )
-#define max(a, b) ( (a > b) ? a : b )
+#define llf_min(a, b) ( (a < b) ? a : b )
+#define llf_max(a, b) ( (a > b) ? a : b )
 
 inline float clamp(float a, float min_, float max_) {
-	float m = max(a, min_);
-	return min(m, max_);
+	float m = llf_max(a, min_);
+	return llf_min(m, max_);
 }
 
 inline float smoothstep(float a, float b, float u) {
