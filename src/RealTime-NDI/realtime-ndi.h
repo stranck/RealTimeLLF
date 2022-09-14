@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <Processing.NDI.Lib.h>
 #include "../utils/utils.h"
-#include "cudaHandler.cuh"
+#include "processingHandler.h"
 
 #ifdef ON_WINDOWS
 	#ifdef _WIN64

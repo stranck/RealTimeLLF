@@ -1,16 +1,15 @@
-#include "cudaHandler.cuh"
-
+#include "processingHandler.h"
+#include "semaphore.hpp"
 #include "../CUDA/cuda.cuh"
-#include <cuda/semaphore>
 
 volatile bool working = false;
 volatile uint32_t widthIn = 0, heightIn = 0, widthOut = 1, heightOut = 1;
-cuda::counting_semaphore<cuda::thread_scope_system> frameAvailable;
-cuda::counting_semaphore<cuda::thread_scope_system> hostSemaphore;
-cuda::counting_semaphore<cuda::thread_scope_system> cleanupDone;
 uint64_t lastDeviceBufferDimension = 0;
 uint64_t lastHostBufferDimension = 0;
 CUDAbuffers *cudaBuffers;
+Semaphore frameAvailable;
+Semaphore hostSemaphore;
+Semaphore cleanupDone;
 Pixel4u8 *hostN2Tbuffer;
 Pixel4u8 *hostT2Nbuffer;
 Image3 *workingImage;
@@ -60,10 +59,10 @@ void handleIncomingFrame(NDIlib_video_frame_v2_t *ndiVideoFrame){
 void writeOutputFrame(NDIlib_video_frame_v2_t *ndiVideoFrame){
 	hostSemaphore.acquire();
 	uint64_t frameDimensionBytes = lastHostBufferDimension * sizeof(Pixel4u8);
-	ndiVideoFrame->xres = min(ndiVideoFrame->xres, widthOut);
-	ndiVideoFrame->yres = min(ndiVideoFrame->yres, heightOut);
+	ndiVideoFrame->xres = llf_min(ndiVideoFrame->xres, widthOut);
+	ndiVideoFrame->yres = llf_min(ndiVideoFrame->yres, heightOut);
 	uint64_t outFrameDim = ndiVideoFrame->xres * ndiVideoFrame->yres * sizeof(Pixel4u8);
-	frameDimensionBytes = min(frameDimensionBytes, outFrameDim);
+	frameDimensionBytes = llf_min(frameDimensionBytes, outFrameDim);
 	memcpy(ndiVideoFrame->p_data, hostT2Nbuffer, frameDimensionBytes);
 	hostSemaphore.release();
 }

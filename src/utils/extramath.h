@@ -1,7 +1,5 @@
 #pragma once
 
-#include <math.h>
-
 #define llf_min(a, b) ( (a < b) ? a : b )
 #define llf_max(a, b) ( (a > b) ? a : b )
 
