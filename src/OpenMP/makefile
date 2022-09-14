@@ -4,7 +4,7 @@ LINKER_ARGS := -lm
 BINFOLDR := ../../bin/
 UTILS := ../utils/
 
-openmp : openmp.cpp openmpUtils.cpp $(UTILS)imageutils.cpp $(UTILS)utils.cpp $(UTILS)llfUtils.cpp
+openmp : openmpMain.cpp openmp.cpp openmpUtils.cpp $(UTILS)imageutils.cpp $(UTILS)utils.cpp $(UTILS)llfUtils.cpp
 	$(GCC) $(ARGS) $^ $(LINKER_ARGS) -o $(BINFOLDR)$@
 
 	

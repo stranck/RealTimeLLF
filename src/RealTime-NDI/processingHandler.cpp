@@ -6,7 +6,7 @@ volatile bool working = false;
 volatile uint32_t widthIn = 0, heightIn = 0, widthOut = 1, heightOut = 1;
 uint64_t lastDeviceBufferDimension = 0;
 uint64_t lastHostBufferDimension = 0;
-CUDAbuffers *cudaBuffers;
+WorkingBuffers *workingBuffers;
 Semaphore frameAvailable;
 Semaphore hostSemaphore;
 Semaphore cleanupDone;
@@ -83,8 +83,8 @@ void initProcessingThread(){
 
 	workingImage = makeImage3(1, 1);
 
-	cudaBuffers = (CUDAbuffers *) malloc(sizeof(CUDAbuffers));
-	initCUDAbuffers(cudaBuffers, 200, 200, _nLevels);
+	workingBuffers = (WorkingBuffers *) malloc(sizeof(WorkingBuffers));
+	initWorkingBuffers(workingBuffers, 200, 200, _nLevels);
 }
 void gpuProcessingThread(){
 	initProcessingThread();
@@ -98,8 +98,8 @@ void gpuProcessingThread(){
 		uint32_t dim = widthIn * heightIn;
 		if(dim > lastDeviceBufferDimension){
 			destroyImage3(&workingImage);
-			destroyCUDAbuffers(cudaBuffers, _nLevels);
-			initCUDAbuffers(cudaBuffers, widthIn, heightIn, _nLevels);
+			destroyWorkingBuffers(workingBuffers, _nLevels);
+			initWorkingBuffers(workingBuffers, widthIn, heightIn, _nLevels);
 			workingImage = makeImage3(widthIn, heightIn);
 			lastDeviceBufferDimension = dim;
 		}
@@ -111,7 +111,7 @@ void gpuProcessingThread(){
 		}
 		hostSemaphore.release();
 	
-		llf(workingImage, _sigma, _alpha, _beta, _nLevels, _nThreads, _nBlocks, cudaBuffers);
+		llf(workingImage, _sigma, _alpha, _beta, _nLevels, _nThreads, _nBlocks, workingBuffers);
 
 		hostSemaphore.acquire();
 		widthOut = workingImage->width;
@@ -129,7 +129,7 @@ void gpuProcessingThread(){
 	free(hostN2Tbuffer);
 	free(hostT2Nbuffer);
 	destroyImage3(&workingImage);
-	destroyCUDAbuffers(cudaBuffers, _nLevels);
+	destroyWorkingBuffers(workingBuffers, _nLevels);
 	cleanupDone.release();
 	print("Processing thread is done");
 }

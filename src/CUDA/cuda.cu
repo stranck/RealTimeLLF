@@ -497,7 +497,7 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
 	}
 }
 
-__host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uint8_t h_nLevels, uint32_t h_nThreads, uint32_t h_elementsNo, CUDAbuffers *h_cudaBuffers){
+__host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uint8_t h_nLevels, uint32_t h_nThreads, uint32_t h_elementsNo, WorkingBuffers *h_cudaBuffers){
 	TimeData timeData;
 	TimeCounter passed = 0;
 
@@ -535,14 +535,13 @@ __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uin
 	copyImg3Device2Host(h_img, d_img);
 }
 
-__host__ void initCUDAbuffers(CUDAbuffers *h_cudaBuffers, uint32_t h_width, uint32_t h_height, uint8_t h_nLevels){
+__host__ void initWorkingBuffers(WorkingBuffers *h_cudaBuffers, uint32_t h_width, uint32_t h_height, uint8_t h_nLevels){
 	h_cudaBuffers->d_outputLaplacian = createPyramidDevice(h_width, h_height, h_nLevels);
 	h_cudaBuffers->d_gaussPyramid = createPyramidDevice(h_width, h_height, h_nLevels);
 	h_cudaBuffers->d_img = makeImage3Device(h_width, h_height);
 	h_cudaBuffers->d_filter = createFilterDevice();
 }
-
-__host__ void destroyCUDAbuffers(CUDAbuffers *h_cudaBuffers, uint8_t h_nLevels){
+__host__ void destroyWorkingBuffers(WorkingBuffers *h_cudaBuffers, uint8_t h_nLevels){
 	destroyImage3Device(h_cudaBuffers->d_img);
 	destroyPyramidDevice(h_cudaBuffers->d_gaussPyramid, h_nLevels);
 	destroyPyramidDevice(h_cudaBuffers->d_outputLaplacian, h_nLevels);

@@ -24,7 +24,7 @@ typedef struct {
 	Pyramid d_gaussPyramid;
 	Pyramid d_outputLaplacian;
 	Image3 *d_img;
-} CUDAbuffers;
+} WorkingBuffers;
 
 __device__ Pixel3 upsampleConvolveSubtractSinglePixel_shared(Pixel3 *srcPx, uint32_t smallWidth, uint32_t smallHeight, Pixel3 gaussPx, Kernel kernel, uint32_t i, uint32_t j, Pixel3 *convolveWorkingBuffer);
 __device__ void gaussianPyramid_shared(Pixel3 **smallDest, Pixel3 **sourceBigDest, uint32_t *width, uint32_t *height, uint32_t *smallW, uint32_t *smallH, uint8_t nLevels, Kernel d_filter);
@@ -43,6 +43,6 @@ __global__ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Ke
 __global__ void gaussianPyramid(Pyramid d_outPyr, Image3 *d_inImg, uint8_t nLevels, Kernel d_filter);
 __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, Image3 *img, uint32_t width, uint32_t height, uint8_t lev, uint32_t subregionDimension, Kernel filter, float sigma, float alpha, float beta);
 
-__host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uint8_t h_nLevels, uint32_t h_nThreads, uint32_t h_elementsNo, CUDAbuffers *h_cudaBuffers);
-__host__ void initCUDAbuffers(CUDAbuffers *h_cudaBuffers, uint32_t h_width, uint32_t h_height, uint8_t h_nLevels);
-__host__ void destroyCUDAbuffers(CUDAbuffers *h_cudaBuffers, uint8_t h_nLevels);
+__host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uint8_t h_nLevels, uint32_t h_nThreads, uint32_t h_elementsNo, WorkingBuffers *h_cudaBuffers);
+__host__ void initWorkingBuffers(WorkingBuffers *h_cudaBuffers, uint32_t h_width, uint32_t h_height, uint8_t h_nLevels);
+__host__ void destroyWorkingBuffers(WorkingBuffers *h_cudaBuffers, uint8_t h_nLevels);

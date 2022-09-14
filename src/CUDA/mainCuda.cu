@@ -15,10 +15,10 @@ int main(int argc, char const *argv[]){
 	destroyImage4(&img4);
 
 	const uint8_t nLevels = 2;
-	CUDAbuffers cudaBuffers;
-	initCUDAbuffers(&cudaBuffers, img->width, img->height, nLevels);
+	WorkingBuffers cudaBuffers;
+	initWorkingBuffers(&cudaBuffers, img->width, img->height, nLevels);
 	llf(img, 0.35, 0.4, 5, nLevels, threadsNo, blocksNo, &cudaBuffers);
-	destroyCUDAbuffers(&cudaBuffers, nLevels);
+	destroyWorkingBuffers(&cudaBuffers, nLevels);
 
 	img4 = image3to4AlphaMap(img, map);
 	destroyImage3(&img);

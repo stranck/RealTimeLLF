@@ -4,5 +4,5 @@ LINKER_ARGS := -lm
 BINFOLDR := ../../bin/
 UTILS := ../utils/
 
-llf : llf.cpp $(UTILS)imageutils.cpp $(UTILS)utils.cpp $(UTILS)llfUtils.cpp
+llf : mainLlf.cpp llf.cpp $(UTILS)imageutils.cpp $(UTILS)utils.cpp $(UTILS)llfUtils.cpp
 	$(GCC) $(COMPILER_ARGS) $^ $(LINKER_ARGS) -o $(BINFOLDR)$@

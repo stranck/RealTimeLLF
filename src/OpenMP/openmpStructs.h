@@ -3,17 +3,6 @@
 #include <stdint.h>
 #include "../utils/structs.h"
 
-
-typedef struct {
-	Pyramid bufferGaussPyramid;
-	Pyramid bufferLaplacianPyramid;
-} Buffers;
-
-#define createBuffers(dest, width, height, nLevels){\
-	(dest).bufferGaussPyramid = createPyramid(width, height, nLevels);\
-	(dest).bufferLaplacianPyramid = createPyramid(width, height, nLevels);\
-}
-
 typedef struct {
 	uint8_t currentNLevels;
 	uint8_t lev;
@@ -28,3 +17,12 @@ typedef struct {
 	Image3 *currentGaussLevel;
 } CurrentLevelInfo;
 
+typedef struct {
+	uint32_t end;
+	Kernel filter;
+	Pyramid *bArr;
+	uint32_t *pyrDimensions;
+	CurrentLevelInfo *cliArr;
+	Pyramid gaussPyramid;
+	Pyramid outputLaplacian;
+} WorkingBuffers;
