@@ -30,19 +30,19 @@ float _sigma, _alpha, _beta;
 uint8_t _nLevels;
 
 #ifdef ON_WINDOWS
-	LPDWORD gpuProcessingTID;
-	DWORD WINAPI gpuProcessingThread_entryPoint(LPVOID lpParameter){ gpuProcessingThread(); return 0; }
+	LPDWORD processingTID;
+	DWORD WINAPI processingThread_entryPoint(LPVOID lpParameter){ processingThread(); return 0; }
 #else
-	pthread_t gpuProcessingTID;
-	void * gpuProcessingThread_entryPoint(void *param){ gpuProcessingThread(); return NULL; }
+	pthread_t processingTID;
+	void * processingThread_entryPoint(void *param){ processingThread(); return NULL; }
 #endif
 
 #if CUDA_VERSION
-	void startGpuProcessingThread(float sigma, float alpha, float beta, uint8_t nLevels, uint32_t nThreads, uint32_t nBlocks){
+	void startProcessingThread(float sigma, float alpha, float beta, uint8_t nLevels, uint32_t nThreads, uint32_t nBlocks){
 #elif OPENMP_VERSION
-	void startGpuProcessingThread(float sigma, float alpha, float beta, uint8_t nLevels, uint32_t nThreads){
+	void startProcessingThread(float sigma, float alpha, float beta, uint8_t nLevels, uint32_t nThreads){
 #else
-	void startGpuProcessingThread(float sigma, float alpha, float beta, uint8_t nLevels){
+	void startProcessingThread(float sigma, float alpha, float beta, uint8_t nLevels){
 #endif
 	_sigma = sigma;
 	_alpha = alpha;
@@ -56,9 +56,9 @@ uint8_t _nLevels;
 	#endif
 
 	#ifdef ON_WINDOWS
-		CreateThread(NULL, 0, gpuProcessingThread_entryPoint, NULL, 0, gpuProcessingTID);
+		CreateThread(NULL, 0, processingThread_entryPoint, NULL, 0, processingTID);
 	#else
-		pthread_create(&gpuProcessingTID, 0, gpuProcessingThread_entryPoint, NULL);
+		pthread_create(&processingTID, 0, processingThread_entryPoint, NULL);
 	#endif
 }
 
@@ -113,7 +113,7 @@ void initProcessingThread(){
 		initWorkingBuffers(workingBuffers, 200, 200, _nLevels);
 	#endif
 }
-void gpuProcessingThread(){
+void processingThread(){
 	initProcessingThread();
 	working = true;
 	while(working){

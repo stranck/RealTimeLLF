@@ -81,11 +81,11 @@ int main(int argc, char const *argv[]){
 
 	NDIlib_find_destroy(ndiFinder); ndiFinder = NULL;
 	#if CUDA_VERSION
-		startGpuProcessingThread(0.35, 0.4, 5, 2, 256, 512);
+		startProcessingThread(0.35, 0.4, 5, 2, 256, 512);
 	#elif OPENMP_VERSION
-		startGpuProcessingThread(0.35, 0.4, 5, 3, 22);
+		startProcessingThread(0.35, 0.4, 5, 3, 22);
 	#else
-		startGpuProcessingThread(0.35, 0.4, 5, 3);
+		startProcessingThread(0.35, 0.4, 5, 3);
 	#endif
 
 	NDIlib_video_frame_v2_t *ndiVideoFrame = new NDIlib_video_frame_v2_t;

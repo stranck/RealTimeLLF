@@ -21,6 +21,7 @@ default: openmp clean;
 clean:
 	rm -f utils.obj
 	rm -f openmp.obj
+	rm -f llfUtils.obj
 	rm -f openmpMain.obj
 	rm -f imageutils.obj
 	rm -f openmpUtils.obj
