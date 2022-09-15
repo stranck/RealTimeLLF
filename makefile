@@ -8,7 +8,8 @@ LLF := $(SRC)llf/
 UTILS := $(SRC)utils/
 SCRIPTS := scripts/
 
-complete : clean all
+.PHONY: default
+default : all
 
 .PHONY : clean
 clean :

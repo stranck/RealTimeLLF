@@ -16,6 +16,8 @@
 	#include <cuda_runtime.h>
 #else
     //Shitty hack to remove the errors from vscode even if it doesn't detect my CUDA installation
+    const Vec3i32 zero3i32 = zero3vect;
+
     #define __global__
     #define __shared__
 	#define __device__
