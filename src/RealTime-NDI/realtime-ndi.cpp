@@ -28,10 +28,10 @@ void cleanup(){
 	if(ndiFinder) NDIlib_find_destroy(ndiFinder);
 	if(ndiSender) NDIlib_send_destroy(ndiSender);
 	NDIlib_destroy();
-	puts("Shuttind down processing thread");
+	print("Shuttind down processing thread");
 	destroyProcessingThread();
 
-	puts("Bye bye!");
+	print("Bye bye!");
 	exit(0);
 }
 
@@ -65,12 +65,12 @@ int main(int argc, char const *argv[]){
 		checkShutdown();
 	}
 
-	printf("Connecting to: %s\n", ndiSources[0].p_ndi_name);
+	printff("Connecting to: %s\n", ndiSources[0].p_ndi_name);
 	NDIlib_send_create_t ndiSendOpt;
 	ndiSendOpt.p_ndi_name = "RealTime LLF out";
 	ndiSendOpt.clock_audio = false;
 	ndiSendOpt.clock_video = true;
-	ndiSender = NDIlib_send_create();
+	ndiSender = NDIlib_send_create(&ndiSendOpt);
 	if (!ndiSender) return 0;
 	NDIlib_recv_create_v3_t ndiRecvOpt;
 	ndiRecvOpt.source_to_connect_to = ndiSources[0];

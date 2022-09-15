@@ -357,7 +357,11 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, con
 	collapse(img, outputLaplacian, nLevels, filter, nThreads);
 	stopTimerCounter(timeData, passed);
 	#ifdef SHOW_TIME_STATS
-		printff("Total time: %lums\n", passed);
+		#if ON_WINDOWS
+			printff("Total time: %dms\n", passed);
+		#else
+			printff("Total time: %lums\n", passed);
+		#endif
 	#endif
 
 	clampImage3(img);

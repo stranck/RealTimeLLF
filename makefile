@@ -14,7 +14,9 @@ complete : clean all
 clean :
 	rm -rf bin/
 	rm -f tmp/*
+	$(MAKE) -C $(LLF) clean
 	$(MAKE) -C $(CUDA) clean
+	$(MAKE) -C $(OPEN_MP) clean
 	$(MAKE) -C $(REAL_TIME_NDI) clean
 
 .PHONY : bin
@@ -50,3 +52,4 @@ testimage :
 	python3 $(SCRIPTS)staticImageConvertI2C.py imgTest/flower.png $(UTILS)test/testimage.h
 
 all : clean bin openmp cuda llf realtime-ndi
+	@echo "Compiled everything successfully"

@@ -14,7 +14,11 @@ void printBuffer(uint8_t *data, uint32_t len){
 			x++;
 		}
 		if(i % 8 == 0) {
-			printf("%016lx", value);
+			#if ON_WINDOWS
+				printf("%016I64x", value);
+			#else
+				printf("%016lx", value);
+			#endif
 		} else {
 			for(x = 0; x < i % 8; x++){
 				printf("%02lx", value >> 56 & 0xff);

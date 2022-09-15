@@ -35,13 +35,13 @@ default: help;
 
 choose-cuda:
 	$(eval VERSION-NAME :=CUDA_VERSION)
-	echo Choosed cuda
+	@echo Choosed cuda
 choose-openmp:
 	$(eval VERSION-NAME :=OPENMP_VERSION)
-	echo Choosed openmp
+	@echo Choosed openmp
 choose-llf:
 	$(eval VERSION-NAME :=LLF_VERSION)
-	echo Choosed llf
+	@echo Choosed llf
 
 cudaUtils.o: $(CUDA)cudaUtils.cu 
 	$(NVCC) $(NVCC-ARGS) $(NVCC-OBJECT_ARGS) $^ $(NVCC-OUTPUT_ARGS) $@
