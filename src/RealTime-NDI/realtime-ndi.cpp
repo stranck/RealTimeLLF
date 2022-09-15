@@ -35,8 +35,35 @@ void cleanup(){
 	exit(0);
 }
 
+//0.35 0.4 5 3 512 256
 int main(int argc, char const *argv[]){
-
+	#if CUDA_VERSION
+		if(argc < 8){
+			printff("Usage: %s <ndi-source name> <sigma> <alpha> <beta> <nLevels> <number of blocks> <number of threads>\n", argv[0]);
+			exit(1);
+		}
+		uint32_t nBlocks = atoi(argv[6]);
+		printff("nBlocks: %d\n", nBlocks);
+		uint32_t nThreads = atoi(argv[7]);
+		printff("nThreads: %d\n", nThreads);
+	#elif OPENMP_VERSION
+		if(argc < 7){
+			printff("Usage: %s <ndi-source name> <sigma> <alpha> <beta> <nLevels> <number of threads>\n", argv[0]);
+			exit(1);
+		}
+		uint8_t nThreads = atoi(argv[6]);
+	#else
+		if(argc < 6){
+			printff("Usage: %s <ndi-source name> <sigma> <alpha> <beta> <nLevels>\n", argv[0]);
+			exit(1);
+		}
+	#endif	
+	const char *ndiSourceName = argv[1];
+	printff("ndiSourceName: %s\n", ndiSourceName);
+	float sigma = atof(argv[2]), alpha = atof(argv[3]), beta = atof(argv[4]);
+	printff("sigma: %f    alpha: %f    beta%f\n", sigma, alpha, beta);
+	uint8_t nLevels = atoi(argv[5]);
+	printff("nLevels: %d\n", nLevels);
 	
 	#ifdef ON_WINDOWS
 		SetConsoleCtrlHandler(consoleHandler, true);
@@ -56,13 +83,21 @@ int main(int argc, char const *argv[]){
 	if (!ndiFinder) return 0;
 
 	uint32_t ndiSourcesNo = 0;
+	const NDIlib_source_t *choosed = NULL;
 	const NDIlib_source_t* ndiSources = NULL;
-	while (!ndiSourcesNo) {
+	while (choosed == NULL) {
 		print("Looking for NDI sources...\n");
-		NDIlib_find_wait_for_sources(ndiFinder, 1000);
+		NDIlib_find_wait_for_sources(ndiFinder, 2500);
 		ndiSources = NDIlib_find_get_current_sources(ndiFinder, &ndiSourcesNo);
-		//TODO obtain source by name
 		checkShutdown();
+		for(uint32_t i = 0; i < ndiSourcesNo; i++){
+			printff("Detected NDI source: '%s'\n", ndiSources[i].p_ndi_name);
+			if(!strcmp(ndiSources[i].p_ndi_name, ndiSourceName)){
+				choosed = &ndiSources[i];
+				break;
+			}
+		}
+		print("");
 	}
 
 	printff("Connecting to: %s\n", ndiSources[0].p_ndi_name);
@@ -73,7 +108,7 @@ int main(int argc, char const *argv[]){
 	ndiSender = NDIlib_send_create(&ndiSendOpt);
 	if (!ndiSender) return 0;
 	NDIlib_recv_create_v3_t ndiRecvOpt;
-	ndiRecvOpt.source_to_connect_to = ndiSources[0];
+	ndiRecvOpt.source_to_connect_to = *choosed;
 	ndiRecvOpt.p_ndi_recv_name = "RealTime LLF in";
 	ndiRecvOpt.color_format = NDIlib_recv_color_format_RGBX_RGBA;
 	ndiReceiver = NDIlib_recv_create_v3(&ndiRecvOpt);
@@ -81,11 +116,11 @@ int main(int argc, char const *argv[]){
 
 	NDIlib_find_destroy(ndiFinder); ndiFinder = NULL;
 	#if CUDA_VERSION
-		startProcessingThread(0.35, 0.4, 5, 2, 256, 512);
+		startProcessingThread(sigma, alpha, beta, nLevels, nBlocks, nThreads);
 	#elif OPENMP_VERSION
-		startProcessingThread(0.35, 0.4, 5, 3, 22);
+		startProcessingThread(sigma, alpha, beta, nLevels, nThreads);
 	#else
-		startProcessingThread(0.35, 0.4, 5, 3);
+		startProcessingThread(sigma, alpha, beta, nLevels);
 	#endif
 
 	NDIlib_video_frame_v2_t *ndiVideoFrame = new NDIlib_video_frame_v2_t;

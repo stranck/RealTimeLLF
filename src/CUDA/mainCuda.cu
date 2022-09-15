@@ -9,6 +9,7 @@ int main(int argc, char const *argv[]){
 	}
 	int blocksNo = atoi(argv[1]);
 	int threadsNo = atoi(argv[2]);
+	
 	Image4 *img4 = getStaticImage4();
 	Image3 *img = image4to3(img4);
 	AlphaMap map = getAlphaMap(img4);
