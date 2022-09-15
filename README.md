@@ -73,9 +73,9 @@ The output rendered image will be placed inside the `tmp/` directory
 
 To compile the version that simply renders a static image and outputs the execution time, you just need to run `make real-rime-llf` (for the single core version), `make real-rime-openmp` (for the multithread version), `make real-rime-cuda` (for the gpu version). The binaries will be placed under the `bin/` folder. You can directly run them, however they take some argouments:
 ```
-realtime-ndi-llf: <ndi-source name> <sigma> <alpha> <beta> <nLevels>
+realtime-ndi-llf:    <ndi-source name> <sigma> <alpha> <beta> <nLevels>
 realtime-ndi-openmp: <ndi-source name> <sigma> <alpha> <beta> <nLevels> <number of threads>
-realtime-ndi-cuda: <ndi-source name> <sigma> <alpha> <beta> <nLevels> <number of blocks> <number of threads per block>
+realtime-ndi-cuda:   <ndi-source name> <sigma> <alpha> <beta> <nLevels> <number of blocks> <number of threads per block>
 ```
 If you want to just see the project working, some good params for the cuda version are: `"NDI SOURCE NAME HERE" 0.35 0.4 5.0 3 512 256`
 
