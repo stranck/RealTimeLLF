@@ -1,5 +1,6 @@
 #include "realtime-ndi.h"
 
+//Notify all threads to stop their activity when a Ctrl+c or sigint is detected by the process
 volatile bool shutdownRequested = false;
 #ifdef ON_WINDOWS
 	#include <windows.h> 
@@ -22,6 +23,9 @@ NDIlib_recv_instance_t ndiReceiver;
 NDIlib_find_instance_t ndiFinder;
 NDIlib_send_instance_t ndiSender;
 
+/**
+ * @brief Shutdowns the process by destroying ndi's stuff and notify the processing thread to end its activity
+ */
 void cleanup(){
 	print("Shutting down NDI");
 	if(ndiReceiver) NDIlib_recv_destroy(ndiReceiver);
@@ -36,7 +40,11 @@ void cleanup(){
 }
 
 //0.35 0.4 5 3 512 256
+/**
+ * @brief Argouments to the main realtime-ndi method: <ndi-source name> <sigma> <alpha> <beta> <nLevels> <number of blocks> <number of threads>
+ */
 int main(int argc, char const *argv[]){
+	//loads version specific args
 	#if CUDA_VERSION
 		if(argc < 8){
 			printff("Usage: %s <ndi-source name> <sigma> <alpha> <beta> <nLevels> <number of blocks> <number of threads>\n", argv[0]);
@@ -57,7 +65,8 @@ int main(int argc, char const *argv[]){
 			printff("Usage: %s <ndi-source name> <sigma> <alpha> <beta> <nLevels>\n", argv[0]);
 			exit(1);
 		}
-	#endif	
+	#endif
+	//load general args
 	const char *ndiSourceName = argv[1];
 	printff("ndiSourceName: %s\n", ndiSourceName);
 	float sigma = atof(argv[2]), alpha = atof(argv[3]), beta = atof(argv[4]);
@@ -65,6 +74,7 @@ int main(int argc, char const *argv[]){
 	uint8_t nLevels = atoi(argv[5]);
 	printff("nLevels: %d\n", nLevels);
 	
+	//adds ctrl+c/sigint handler
 	#ifdef ON_WINDOWS
 		SetConsoleCtrlHandler(consoleHandler, true);
 	#else
@@ -79,34 +89,36 @@ int main(int argc, char const *argv[]){
 
 	if (!NDIlib_initialize()) return 0;
 
-	ndiFinder = NDIlib_find_create_v2();
+	ndiFinder = NDIlib_find_create_v2(); //Creates an ndi source finder
 	if (!ndiFinder) return 0;
 
 	uint32_t ndiSourcesNo = 0;
 	const NDIlib_source_t *choosed = NULL;
 	const NDIlib_source_t* ndiSources = NULL;
-	while (choosed == NULL) {
+	while (choosed == NULL) { //Search for the ndi source by name
 		print("Looking for NDI sources...\n");
 		NDIlib_find_wait_for_sources(ndiFinder, 2500);
-		ndiSources = NDIlib_find_get_current_sources(ndiFinder, &ndiSourcesNo);
-		checkShutdown();
-		for(uint32_t i = 0; i < ndiSourcesNo; i++){
+		ndiSources = NDIlib_find_get_current_sources(ndiFinder, &ndiSourcesNo); //Get the current ndi sources
+		checkShutdown(); //Checks if a process shutdown has been requested. If yes, the program is going to call exit(0)
+		for(uint32_t i = 0; i < ndiSourcesNo; i++){ //For each ndi source
 			printff("Detected NDI source: '%s'\n", ndiSources[i].p_ndi_name);
-			if(!strcmp(ndiSources[i].p_ndi_name, ndiSourceName)){
+			if(!strcmp(ndiSources[i].p_ndi_name, ndiSourceName)){ //Check if its name is the choosed one
 				choosed = &ndiSources[i];
-				break;
+				break; //If yes, breaks and continue with the main method
 			}
 		}
 		print("");
 	}
 
 	printff("Connecting to: %s\n", ndiSources[0].p_ndi_name);
+	//Create an ndi send object specifying its name
 	NDIlib_send_create_t ndiSendOpt;
 	ndiSendOpt.p_ndi_name = "RealTime LLF out";
 	ndiSendOpt.clock_audio = false;
 	ndiSendOpt.clock_video = true;
 	ndiSender = NDIlib_send_create(&ndiSendOpt);
 	if (!ndiSender) return 0;
+	//Create an ndi receive object specifying the source to connect to, the recv name and to receive the video frames encoded in RGBA (otherwise it's going to use UYVY)
 	NDIlib_recv_create_v3_t ndiRecvOpt;
 	ndiRecvOpt.source_to_connect_to = *choosed;
 	ndiRecvOpt.p_ndi_recv_name = "RealTime LLF in";
@@ -114,7 +126,8 @@ int main(int argc, char const *argv[]){
 	ndiReceiver = NDIlib_recv_create_v3(&ndiRecvOpt);
 	if (!ndiReceiver) return 0;
 
-	NDIlib_find_destroy(ndiFinder); ndiFinder = NULL;
+	NDIlib_find_destroy(ndiFinder); ndiFinder = NULL; //destroys the ndi finder object
+	//Starts the processing thread
 	#if CUDA_VERSION
 		startProcessingThread(sigma, alpha, beta, nLevels, nBlocks, nThreads);
 	#elif OPENMP_VERSION
@@ -123,16 +136,17 @@ int main(int argc, char const *argv[]){
 		startProcessingThread(sigma, alpha, beta, nLevels);
 	#endif
 
+	//allocates a buffer ndiVideoFrame
 	NDIlib_video_frame_v2_t *ndiVideoFrame = new NDIlib_video_frame_v2_t;
 	while(true){
-		switch (NDIlib_recv_capture_v2(ndiReceiver, ndiVideoFrame, NULL, NULL, 5000)) {
+		switch (NDIlib_recv_capture_v2(ndiReceiver, ndiVideoFrame, NULL, NULL, 5000)) { //Capture an ndi packet
 
-			case NDIlib_frame_type_video: {
+			case NDIlib_frame_type_video: { //if the ndi packet is a video packet
 				//printff("Video data received (%dx%d).\n", ndiVideoFrame.xres, ndiVideoFrame.yres);
-				handleIncomingFrame(ndiVideoFrame);
-				writeOutputFrame(ndiVideoFrame);
-				NDIlib_send_send_video_v2(ndiSender, ndiVideoFrame);
-				NDIlib_recv_free_video_v2(ndiReceiver, ndiVideoFrame);
+				handleIncomingFrame(ndiVideoFrame); //pass it to the processing thread
+				getOutputFrame(ndiVideoFrame); //get the last rendered output from the processing thread
+				NDIlib_send_send_video_v2(ndiSender, ndiVideoFrame); //send the rendered frame
+				NDIlib_recv_free_video_v2(ndiReceiver, ndiVideoFrame); //clear the buffers
 				break;
 			}
 
@@ -146,7 +160,7 @@ int main(int argc, char const *argv[]){
 				break;
 			}
 		}
-		checkShutdown();
+		checkShutdown(); //Checks if a process shutdown has been requested. If yes, the program is going to call exit(0)
 	}
 
 	return 0;

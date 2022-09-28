@@ -17,22 +17,40 @@ Image3 * makeImage3WithData(uint32_t width, uint32_t height, Pixel3 pixels[]);
 void destroyImage3(Image3 **img);
 void destroyImage4(Image4 **img);
 
+/**
+ * @brief Gets a Pixel4 from an image4 at xy coords
+ */
 inline Pixel4 * getPixel4(Image4 *img, uint32_t x, uint32_t y){
 	return &img->pixels[y * img->width + x];
 }
+/**
+ * @brief Gets a Pixel4 from an image4 using a vect2u32 as {x, y} coordinates
+ */
 inline Pixel4 * getPixel4Vec(Image4 *img, Vec2u32 v){
 	return &img->pixels[v.y * img->width + v.x];
 }
+/**
+ * @brief Gets a Pixel3 from an image3 at xy coords
+ */
 inline Pixel3 * getPixel3(Image3 *img, uint32_t x, uint32_t y){
 	return &img->pixels[y * img->width + x];
 }
+/**
+ * @brief Gets a Pixel3 from an image3 using a vect2u32 as {x, y} coordinates
+ */
 inline Pixel3 * getPixel3Vec(Image3 *img, Vec2u32 v){
 	return &img->pixels[v.y * img->width + v.x];
 }
 
+/**
+ * @brief Sets a pixel in an image3 at xy coords
+ */
 inline void setPixel3(Image3 *img, uint32_t x, uint32_t y, Pixel3 *px){
 	img->pixels[y * img->width + x] = *px;
 }
+/**
+ * @brief Sets a pixel in an image4 using a vect2u32 as {x, y} coordinates
+ */
 inline void setPixel3Vec(Image3 *img, Vec2u32 v, Pixel3 *px){
 	img->pixels[v.y * img->width + v.x] = *px;
 }

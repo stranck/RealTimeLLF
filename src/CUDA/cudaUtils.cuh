@@ -36,6 +36,9 @@
 	#define grid(x, y)({dim3{x, y, 0}});
 #endif
 
+/**
+ * @brief checks the cuda function has returned an error, print it and exit(1) 
+ */
 #define CHECK(call){                    \
     const cudaError_t error = call;     \
     if(error != cudaSuccess){           \
@@ -45,9 +48,28 @@
     }                                   \
 }
 
+/**
+ * @brief obtains a pixel3 from the gpu
+ * Unlike getPixel3 this function works directly on the pixel buffer, so you can cache accesses to global memory by not loading it from the image object each time
+ * 
+ * @param _pxs source array of pixels of the image
+ * @param _width width of the source image
+ * @param _x x coordinate
+ * @param _y y coordinate
+ */
 #define d_getPixel3(_pxs, _width, _x, _y){ \
 	_pxs[(_y) * (_width) + (_x)] \
 }
+/**
+ * @brief sets a pixel3 on the gpu
+ * Unlike setPixel3 this function works directly on the pixel buffer, so you can cache accesses to global memory by not loading it from the image object each time
+ * 
+ * @param _pxs source array of pixels of the image
+ * @param _width width of the source image
+ * @param _x x coordinate
+ * @param _y y coordinate
+ * @param _px pixel to copy at xy coordinates
+ */
 #define d_setPixel3(_pxs, _width, _x, _y, _px){ \
 	_pxs[(_y) * (_width) + (_x)] = _px; \
 }
@@ -80,3 +102,33 @@ __device__ inline Pixel3 d_remapSinglePixel(const Pixel3 source, const Pixel3 g0
 __device__ void d_subimage3(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY);
 __device__ void d_subimage3Remap(Image3 *dest, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY, const Pixel3 g0, float sigma, float alpha, float beta);
 __device__ void d_subimage3Remap_shared(Pixel3 *destPx, Image3 *source, uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY, const Pixel3 g0, float sigma, float alpha, float beta);
+
+
+/**
+ * @brief returns the min between two uint32_t improving branch efficency
+ */
+__device__ inline uint32_t d_minU32(uint32_t a, uint32_t b){
+	int flag = a < b;
+	return a * flag + b * (1 - flag);
+}
+/**
+ * @brief returns the max between two uint32_t improving branch efficency
+ */
+__device__ inline uint32_t d_maxU32(uint32_t a, uint32_t b){
+	int flag = a > b;
+	return a * flag + b * (1 - flag);
+}
+/**
+ * @brief returns the min between two int32_t improving branch efficency
+ */
+__device__ inline int32_t d_minI32(int32_t a, int32_t b){
+	int flag = a < b;
+	return a * flag + b * (1 - flag);
+}
+/**
+ * @brief returns the max between two int32_t improving branch efficency
+ */
+__device__ inline int32_t d_maxI32(int32_t a, int32_t b){
+	int flag = a > b;
+	return a * flag + b * (1 - flag);
+}

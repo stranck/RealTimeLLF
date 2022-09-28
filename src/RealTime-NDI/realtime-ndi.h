@@ -21,4 +21,7 @@
 void cleanup();
 int main(int argc, char const *argv[]);
 
+/**
+ * @brief if shutdown has been requested, calls the cleanup routine that will call an exit(0)
+ */
 #define checkShutdown(){if(shutdownRequested) cleanup();}

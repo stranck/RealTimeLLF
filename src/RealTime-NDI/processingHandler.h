@@ -24,7 +24,7 @@
 	void startProcessingThread(float sigma, float alpha, float beta, uint8_t nLevels);
 #endif
 void handleIncomingFrame(NDIlib_video_frame_v2_t *ndiVideoFrame);
-void writeOutputFrame(NDIlib_video_frame_v2_t *ndiVideoFrame);
+void getOutputFrame(NDIlib_video_frame_v2_t *ndiVideoFrame);
 void destroyProcessingThread();
 void initProcessingThread();
 void processingThread();
