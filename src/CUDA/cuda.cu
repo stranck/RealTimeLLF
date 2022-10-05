@@ -436,7 +436,11 @@ __device__ void downsampleConvolve_fast(Image3 *dest, Image3 *source, uint32_t *
  * @param filter blur kernel
  */
 __device__ void downsampleConvolve_cuda(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter){
-	downsampleConvolve_shared(dest->pixels, source->pixels, height, width, filter);
+	downsampleConvolve_shared(dest->pixels, source->pixels, width, height, filter);
+	if(threadIdx.x == 0){ //Only one thread should 
+		dest->width = *width;
+		dest->height = *height;
+	}
 }
 
 /**
