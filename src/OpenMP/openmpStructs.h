@@ -12,7 +12,7 @@ typedef struct {
 	uint32_t oldY; //Height of the previous level
 	uint32_t width; //Width of the current level
 	uint32_t prevLevelDimension; //Total number of pixels we worked on the previous frames
-	uint32_t nextLevelDimension; //Total number of pixelsthat will be rendered at the end of this layer. This is used to check when we're done with it
+	uint32_t nextLevelDimension; //Total number of pixels that will be rendered at the end of this layer. This is used to check when we're done with it
 	uint32_t subregionDimension; //Dimension of the rendering subregion at the current level
 	uint32_t full_res_roi_yShifted; //Current full_res_roi_yShifted at the current level at the current y
 	uint32_t base_y; //Current base_y at the current level at the current y

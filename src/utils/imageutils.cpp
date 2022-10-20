@@ -87,7 +87,7 @@ Image3 * makeImage3WithData(uint32_t width, uint32_t height, Pixel3 pixels[]){
  * @brief Deallocates an Image3
  * It also sets its pointer to NULL, to prevent UAF
  * 
- * @param img image3 to deallocate
+ * @param img pointer to the variable holding the image3 to deallocate
  */
 void destroyImage3(Image3 **img){
 	Image3 *localImg = *img;
@@ -100,7 +100,7 @@ void destroyImage3(Image3 **img){
  * @brief Deallocates an Image4
  * It also sets its pointer to NULL, to prevent UAF
  * 
- * @param img image4 to deallocate
+ * @param img pointer to the variable holding the image4 to deallocate
  */
 void destroyImage4(Image4 **img){
 	Image4 *localImg = *img;

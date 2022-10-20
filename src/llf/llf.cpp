@@ -1,7 +1,7 @@
 #include "llf.h"
 
 /**
- * @brief Upsamples an image by duplicating it in size and the applying a blur kernel to remove the squares
+ * @brief Upsamples an image by duplicating it in size and then applying a blur kernel to remove the squares
  * 
  * This is the original and cleanest upsample + convolve version from the llf's paper
  * 
@@ -107,16 +107,16 @@ void downsample(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height,
  * - Create a gaussian pyramid starting from the source image
  * - For each pixel, for each layer of the gauss pyramid:
  * -- take the current pixel G0 from the original gaussian pyramid
- * -- cut a subregion from the source image with a dimension proportional to the layer's dimension near the pixel
+ * -- cut a subregion around G0 from the source image with a dimension proportional to the layer's dimension near the pixel
  * -- apply a remap function to this subregion using G0
  * -- create a gaussian pyramid over this subregion
  * -- create a laplacian pyramid over the previous gaussian pyramid
- * -- copy the pixel placed at the correct coordinates respect to the original pixel, on the current layer of the laplacian pyramid, to the current layer of the output laplacian pyramid
+ * -- copy the pixel placed at the correct coordinates respect to the original pixel, of the current layer of the laplacian pyramid, to the current layer of the output laplacian pyramid
  * - copy the smallest layer of the gaussian pyramid over the output laplacian pyramid
  * - collapse the output laplacian pyramid over the destination image
  * - clamp the destination image
  * 
- * @param img source AND destination image. The content of these image are going to be overwritten after the algorithm completes!
+ * @param img source AND destination image. The content of this image is going to be overwritten after the algorithm completes!
  * @param sigma Treshold used by remap function to identify edges and details
  * @param alpha Controls the details level
  * @param beta Controls the tone mapping level
@@ -136,21 +136,18 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, Wor
 	TimeData timeData; //Variables used to cout the elapsed computation time. Compile with the preprocessor flag SHOW_TIME_STATS = 1 to show these stats
 	TimeCounter passed = 0;
 
-	//print("Creating first gauss pyramid");
 	startTimerCounter(timeData);
 	gaussianPyramid(gaussPyramid, img, nLevels, filter); //Creates a gaussian pyramid starting from the source image
 	stopTimerCounter(timeData, passed);
-	//print("Entering main loop");
 	startTimerCounter(timeData);
 	for(uint8_t lev = 0; lev < nLevels; lev++){ //For each layer of the gaussian pyramid
-		//printff("laplacian inner loop %d/%d\n", lev, (nLevels - 1));
 		Image3 *currentGaussLevel = gaussPyramid[lev];
 		uint32_t gaussianWidth = currentGaussLevel->width, gaussianHeight = currentGaussLevel->height;
 		uint32_t subregionDimension = 3 * ((1 << (lev + 2)) - 1) / 2; //Calc the subregion dimension
 
 		for(uint32_t y = 0; y < gaussianHeight; y++){
 
-			//no fuckin clues what this calcs are
+			//no fkin clues what this calcs are
 			int32_t full_res_y = (1 << lev) * y;
 			int32_t roi_y0 = full_res_y - subregionDimension;
 			int32_t roi_y1 = full_res_y + subregionDimension + 1;
@@ -160,7 +157,7 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, Wor
 			int32_t full_res_roi_yShifted = full_res_roi_y >> lev;
 
 			for(uint32_t x = 0; x < gaussianWidth; x++){ //For each pixel
-				//no fuckin clues what this calcs are PT2
+				//no fkin clues what this calcs are PT2
 				int32_t full_res_x = (1 << lev) * x;
 				int32_t roi_x0 = full_res_x - subregionDimension;
 				int32_t roi_x1 = full_res_x + subregionDimension + 1;

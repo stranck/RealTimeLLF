@@ -41,7 +41,7 @@ void remap(Image3 * img, const Pixel3 g0, float sigma, float alpha, float beta){
 }
 
 /**
- * @brief Allocates a blur kernel for the convolve functions
+ * @brief Allocates and computes a blur kernel for the convolve functions
  * 
  * @return Kernel blur kernel
  */
@@ -79,7 +79,7 @@ Pyramid createPyramid(uint32_t width, uint32_t height, uint8_t nLevels){
 	nLevels++; //Pyramids has one more layer!
 	Pyramid p = (Pyramid) malloc(nLevels * sizeof(Image3*)); //alloc the pyramid array
 	for(uint8_t i = 0; i < nLevels; i++){
-		p[i] = makeImage3(width, height); //alloc the image for each layer
+		p[i] = makeImage3(width, height); //alloc the images for each layer
 		width = width / 2 + (width & 1);
 		height = height / 2 + (height & 1); //update the dimensions of the next layer
 	}
@@ -144,7 +144,7 @@ void convolve(Image3 *dest, Image3 *source, Kernel kernel) {
 }
 
 /**
- * @brief Upsamples an image by duplicating it in size and the applying a blur kernel to remove the squares at the same time
+ * @brief Upsamples an image by duplicating it in size and applying a blur kernel to remove the squares at the same time
  * 
  * This will save an extra copy of the whole upsized image and the need of an extra temp buffer
  * 
@@ -230,7 +230,7 @@ void laplacianPyramid(Pyramid laplacian, Pyramid tempGauss, uint8_t nLevels, Ker
 
 
 /**
- * @brief Downsamples an image by halfing it in size and the applying a blur kernel to remove the gaps at the same time
+ * @brief Downsamples an image by halfing it in size and then applying a blur kernel to remove the gaps at the same time
  * 
  * This will save an extra copy of the whole downsized image and the need of an extra temp buffer
  * 
@@ -245,7 +245,7 @@ void downsampleConvolve(Image3 *dest, Image3 *source, uint32_t *width, uint32_t 
 	*width /= 2;
 	*height /= 2;
 	dest->width = *width;
-	dest->height = *height; //Half the image dimension and save both of them in the original ptrs and inside the dest image
+	dest->height = *height; //Halfs the image dimensions and save both of them in the original ptrs and inside the dest image
 	const int32_t startingX = originalW & 1;
 	const int32_t startingY = originalH & 1; //If the dimension is odd, we copy only the "middle" pixels. Eg the X: -X-X-
 	const int8_t  rows = KERNEL_DIMENSION;

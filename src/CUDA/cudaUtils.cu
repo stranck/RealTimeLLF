@@ -71,7 +71,7 @@ __host__ Pyramid createPyramidDevice(uint32_t width, uint32_t height, uint8_t nL
 	Pyramid d_p;
 	CHECK(cudaMalloc((void**) &d_p, nLevels * sizeof(Image3*))); //Allocates the pyramid in the device's memory
 	printff("CreatePyramidDevice: malloc pyramid at 0x%032llx. Params: %u\n", d_p, nLevels);
-	CHECK(cudaMemcpy(d_p, h_p, nLevels * sizeof(Image3*), cudaMemcpyHostToDevice)); //Copy the pyramid containing pointers to images on the device, to the device's memory
+	CHECK(cudaMemcpy(d_p, h_p, nLevels * sizeof(Image3*), cudaMemcpyHostToDevice)); //Copy the pyramid containing the pointers to the device allocated images, to the device's memory
 	return d_p;
 }
 /**
@@ -128,7 +128,7 @@ __device__ Image3 * d_makeImage3(uint32_t width, uint32_t height){
  */
 __host__ Image3 * makeImage3Device(uint32_t width, uint32_t height){
 	Pixel3 *d_img;
-	CHECK(cudaMalloc((void**) &d_img, width * height * sizeof(Pixel3))); //Allocates the pixel's buffer in the device memory
+	CHECK(cudaMalloc((void**) &d_img, width * height * sizeof(Pixel3))); //Allocates the pixels' buffer in the device memory
 	Image3 h_i; //Creates the image first in the host's stack
 	h_i.width = width;
 	h_i.height = height;
@@ -233,7 +233,7 @@ __global__ void d_copyPyrLevel(Pyramid dst_pyr, Pyramid src_pyr, uint8_t level){
  * @return Image3* Pointer to the device allocated image at the specified layer of the pyramid
  */
 __host__ Image3 * getImageFromPyramidDevice(Pyramid d_pyr, uint8_t h_level){
-	Pyramid h_pyr = (Pyramid) allocStack((h_level + 1) * sizeof(Image3*)); //We just need to copy up to level pointers;
+	Pyramid h_pyr = (Pyramid) allocStack((h_level + 1) * sizeof(Image3*)); //We just need to copy up to h_level pointers;
 	CHECK(cudaMemcpy(h_pyr, d_pyr, (h_level + 1) * sizeof(Image3*), cudaMemcpyDeviceToHost)); //copy the whole pyramid to the host's memory
 	return h_pyr[h_level];
 }
@@ -392,11 +392,12 @@ __device__ float d_smoothstep(float a, float b, float u) {
  * It's defined inside the llf's papers https://people.csail.mit.edu/sparis/publi/2011/siggraph/Paris_11_Local_Laplacian_Filters.pdf
  * at page 5 paragaph 4
  * 
- * @param img Image to be remapped on the device's memory
+ * @param source Pixel to remap
  * @param g0 Reference pixel
  * @param sigma Treshold used by remap function to identify edges and details
  * @param alpha Controls the details level
  * @param beta Controls the tone mapping level
+ * @return Pixel3 remapped pixel
  */
 __device__ inline Pixel3 d_remapSinglePixel(const Pixel3 source, const Pixel3 g0, float sigma, float alpha, float beta){
 	Pixel3 delta;
@@ -407,7 +408,7 @@ __device__ inline Pixel3 d_remapSinglePixel(const Pixel3 source, const Pixel3 g0
 	int details = mag < sigma;
 	float fraction = mag / sigma;
 	float polynomial = pow(fraction, alpha);
-	if(alpha < 1){ //alpha is one of the entire llf params, so ALL the threads will always take the same branch
+	if(alpha < 1){ //alpha is one of the entire llf params, so ALL the threads will ALWAYS take the same branch
 		const float kNoiseLevel = 0.01;
 		float blend = d_smoothstep(kNoiseLevel, 2 * kNoiseLevel, fraction * sigma);
 		polynomial = blend * polynomial + (1 - blend) * fraction;

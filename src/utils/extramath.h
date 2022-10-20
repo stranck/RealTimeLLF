@@ -15,7 +15,7 @@
  * @param a input
  * @param min_ min value of the range
  * @param max_ max value of the range
- * @return float a if it's between min and max, min if a < min, max if a > max
+ * @return a if it's between min and max, min if a < min, max if a > max
  */
 inline float clamp(float a, float min_, float max_) {
 	float m = llf_max(a, min_);

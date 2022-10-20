@@ -33,7 +33,7 @@ void cleanup(){
 	if(ndiSender) NDIlib_send_destroy(ndiSender);
 	NDIlib_destroy();
 	print("Shuttind down processing thread");
-	destroyProcessingThread();
+	destroyProcessingThread(); //synchronous call
 
 	print("Bye bye!");
 	exit(0);
@@ -102,7 +102,7 @@ int main(int argc, char const *argv[]){
 		checkShutdown(); //Checks if a process shutdown has been requested. If yes, the program is going to call exit(0)
 		for(uint32_t i = 0; i < ndiSourcesNo; i++){ //For each ndi source
 			printff("Detected NDI source: '%s'\n", ndiSources[i].p_ndi_name);
-			if(!strcmp(ndiSources[i].p_ndi_name, ndiSourceName)){ //Check if its name is the choosed one
+			if(!strcmp(ndiSources[i].p_ndi_name, ndiSourceName)){ //Check if its name is the chosen one
 				choosed = &ndiSources[i];
 				break; //If yes, breaks and continue with the main method
 			}
@@ -111,14 +111,14 @@ int main(int argc, char const *argv[]){
 	}
 
 	printff("Connecting to: %s\n", ndiSources[0].p_ndi_name);
-	//Create an ndi send object specifying its name
+	//Creates an ndi send object specifying its name
 	NDIlib_send_create_t ndiSendOpt;
 	ndiSendOpt.p_ndi_name = "RealTime LLF out";
 	ndiSendOpt.clock_audio = false;
 	ndiSendOpt.clock_video = true;
 	ndiSender = NDIlib_send_create(&ndiSendOpt);
 	if (!ndiSender) return 0;
-	//Create an ndi receive object specifying the source to connect to, the recv name and to receive the video frames encoded in RGBA (otherwise it's going to use UYVY)
+	//Creates an ndi receive object specifying the source to connect to, the receive name and sets the encoding of the incoming video frames to RGBX/A (otherwise it's going to use UYVY)
 	NDIlib_recv_create_v3_t ndiRecvOpt;
 	ndiRecvOpt.source_to_connect_to = *choosed;
 	ndiRecvOpt.p_ndi_recv_name = "RealTime LLF in";
@@ -146,7 +146,7 @@ int main(int argc, char const *argv[]){
 				handleIncomingFrame(ndiVideoFrame); //pass it to the processing thread
 				getOutputFrame(ndiVideoFrame); //get the last rendered output from the processing thread
 				NDIlib_send_send_video_v2(ndiSender, ndiVideoFrame); //send the rendered frame
-				NDIlib_recv_free_video_v2(ndiReceiver, ndiVideoFrame); //clear the buffers
+				NDIlib_recv_free_video_v2(ndiReceiver, ndiVideoFrame); //clear the ndi buffers
 				break;
 			}
 

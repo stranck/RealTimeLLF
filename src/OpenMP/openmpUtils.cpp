@@ -26,7 +26,7 @@ void initLevelInfo(CurrentLevelInfo *cli, uint32_t *pyrDimensions, Pyramid gauss
 /**
  * @brief Updates the status of the info object to the next level of the gaussian pyramid
  * 
- * @param cli Current level info object
+ * @param cli CurrentLevelInfo object
  * @param pyrDimensions Cached number of pixel per each layer of the gaussian pyramid
  * @param gaussPyramid Original gaussian pyramid
  */

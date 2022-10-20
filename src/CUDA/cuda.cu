@@ -23,7 +23,7 @@
  * @param kernel blur kernel
  * @param i x coordinates of the pixel on the upsampled image we're gonna use in the subtraction
  * @param j y coordinates of the pixel on the upsampled image we're gonna use in the subtraction
- * @param convolveWorkingBuffer buffer used to temporary store the semi-rendere pixel
+ * @param convolveWorkingBuffer buffer used to temporary store the semi-rendered pixel
  * @return Pixel3 Single pixel we've rendered instead of the complete pyramid, we can place directly on the output laplacian pyramid
  */
 __device__ Pixel3 upsampleConvolveSubtractSinglePixel_shared(Pixel3 *srcPx, uint32_t smallWidth, uint32_t smallHeight, Pixel3 gaussPx, Kernel kernel, uint32_t i, uint32_t j, Pixel3 *convolveWorkingBuffer){
@@ -73,14 +73,14 @@ __device__ Pixel3 upsampleConvolveSubtractSinglePixel_shared(Pixel3 *srcPx, uint
  * @param kernel blur kernel
  * @param i x coordinates of the pixel on the upsampled image we're gonna use in the subtraction
  * @param j y coordinates of the pixel on the upsampled image we're gonna use in the subtraction
- * @return Pixel3 Single pixel we've rendered instead of the complete pyramid, we can place directly on the output laplacian pyramid
+ * @return Pixel3 Single pixel we've rendered instead of the complete pyramid we can place directly on the output laplacian pyramid
  */
 __device__ Pixel3 upsampleConvolveSubtractSinglePixel(Image3 *source, Pixel3 gaussPx, Kernel kernel, uint32_t i, uint32_t j, Pixel3 *convolveWorkingBuffer){
 	upsampleConvolveSubtractSinglePixel_shared(source->pixels, source->width, source->height, gaussPx, kernel, i, j, convolveWorkingBuffer);
 }
 /**
  * @brief Upsamples an image by duplicating it in size and the applying a blur kernel to remove the squares at the same time. It also do a laplacian rendering at the same time
- * Each gpu thread will render a bounch of pixel independently from each other. Unlike upsampleConvolve_cuda we use a temp buffer that should be stored in shared memory to improve access time
+ * Each gpu thread will render a bounch of pixel independently from each other. Unlike upsampleConvolve_cuda we use a temp buffer that should be stored in shared memory to improve access times
  * 
  * This is a first major optimization to the normal upsample convolve described by the llf paper:
  * Instead of building the whole laplacian pyramid, we just upsample and subtract the last layer of the gaussian pyramid
@@ -88,7 +88,7 @@ __device__ Pixel3 upsampleConvolveSubtractSinglePixel(Image3 *source, Pixel3 gau
  * @param dest Destination image
  * @param source Source image 
  * @param kernel Blur kernel
- * @param ds_upsampled Temp buffer that should be located in shared memory to improve access time
+ * @param ds_upsampled Temp buffer that should be located in shared memory to improve access times
  */
 __device__ void upsampleConvolveSubtract_fast(Image3 *dest, Image3 *source, Image3 *currentGauss, Kernel kernel, Pixel3 *ds_upsampled){
 	uint32_t smallWidth = source->width, smallHeight = source->height;
@@ -109,11 +109,11 @@ __device__ void upsampleConvolveSubtract_fast(Image3 *dest, Image3 *source, Imag
 	
 	uint32_t dim = smallWidth * smallHeight;
 	uint32_t max = dim / blockDim.x;
-	for(uint32_t i = 0; i <= max; i++){
+	for(uint32_t i = 0; i <= max; i++){ //Use multiple threads to copy the image to the temp buffer in shared memory
 		uint32_t idx = i * blockDim.x + threadIdx.x;
 		if(idx < dim){
 			uint32_t x = idx % smallWidth, y = idx / smallWidth;
-			d_setPixel3(ds_upsampled, smallWidth, x, y, d_getPixel3(srcPx, smallWidth, x, y)); //Copy the image to the temp buffer in shared memory
+			d_setPixel3(ds_upsampled, smallWidth, x, y, d_getPixel3(srcPx, smallWidth, x, y));
 		}
 	}
 	__syncthreads();
@@ -130,7 +130,7 @@ __device__ void upsampleConvolveSubtract_fast(Image3 *dest, Image3 *source, Imag
 			for (uint32_t y = 0; y < rows; y++) {
                 int32_t jy = (j + ystart + y) / 2;
 				for (uint32_t x = 0; x < cols; x++) { //For each pixel of the kernel square surrounding C 
-                    int32_t ix = (i + xstart + x) / 2; //Half the coordinate to use them on the original smaller image
+                    int32_t ix = (i + xstart + x) / 2; //Half the coordinates to use them on the original smaller image
 
 					int32_t oob = ix >= 0 && ix < smallWidth && jy >= 0 && jy < smallHeight; //Check if we're out of bounds
 					int32_t fi = ix * oob + (i / 2) * (1 - oob), fj = jy * oob + (j / 2) * (1 - oob); //Obtain the final coordinates 
@@ -186,7 +186,7 @@ __device__ void upsampleConvolve_cuda(Image3 *dest, Image3 *source, Kernel kerne
 			for (uint32_t y = 0; y < rows; y++) {
                 int32_t jy = (j + ystart + y) / 2;
 				for (uint32_t x = 0; x < cols; x++) { //For each pixel of the kernel square surrounding C 
-                    int32_t ix = (i + xstart + x) / 2; //Half the coordinate to use them on the original smaller image
+                    int32_t ix = (i + xstart + x) / 2; //Half the coordinates to use them on the original smaller image
 
 					int32_t oob = ix >= 0 && ix < smallWidth && jy >= 0 && jy < smallHeight; //Check if we're out of bounds
 					int32_t fi = ix * oob + (i / 2) * (1 - oob), fj = jy * oob + (j / 2) * (1 - oob); //Obtain the final coordinates 
@@ -306,7 +306,7 @@ __global__ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Ke
 
 /**
  * @brief Downsamples an image on the gpu memory by halfing it in size and the applying a blur kernel to remove the gaps at the same time
- * The source and the dest are pixel buffers that can also be in shared memory to improve access times
+ * The source and the dest are pixel buffers that should be in shared memory to improve access times
  * This will save an extra copy of the whole downsized image and the need of an extra temp buffer
  * 
  * @param dest destination bigger pixel buffer that should be in shared memory
@@ -319,7 +319,7 @@ __device__ void downsampleConvolve_shared(Pixel3 *dstPx, Pixel3 *srcPx, uint32_t
 	const uint32_t originalW = *width, originalH = *height;
 	const uint32_t downW = originalW / 2, downH = originalH / 2;
 	*width = downW;
-	*height = downH; //Half the image dimension
+	*height = downH; //Half the image dimensions
 	const int32_t startingX = originalW & 1;
 	const int32_t startingY = originalH & 1; //If the dimension is odd, we copy only the "middle" pixels. Eg the X: -X-X-
 	const int8_t  rows = KERNEL_DIMENSION;
@@ -337,7 +337,7 @@ __device__ void downsampleConvolve_shared(Pixel3 *dstPx, Pixel3 *srcPx, uint32_t
 			Pixel3 c = zero3vect;
 			for (uint32_t y = 0; y < rows; y++) {
 				int32_t jy = j + (ystart + y) * 2 - startingY;
-				for (uint32_t x = 0; x < cols; x++) {  //For each pixel in a KERNEL_DIMENSION^2 square sorrounding C
+				for (uint32_t x = 0; x < cols; x++) {  //For each pixel in a KERNEL_DIMENSION^2 square surrounding C
 					int32_t ix = i + (xstart + x) * 2 - startingX;
 
 					int32_t oob = ix >= 0 && ix < originalW && jy >= 0 && jy < originalH; //Check if we're in bounds of the bigger image
@@ -356,7 +356,7 @@ __device__ void downsampleConvolve_shared(Pixel3 *dstPx, Pixel3 *srcPx, uint32_t
 	__syncthreads();
 }
 /**
- * @brief Downsamples an image on the gpu memory by halfing it in size and the applying a blur kernel to remove the gaps at the same time
+ * @brief Downsamples an image on the gpu memory by halfing it in size and applying a blur kernel to remove the gaps at the same time
  * It uses an extra pixel buffer that should be in shared memory as a temp buffer to reduce access times
  * This will save an extra copy of the whole downsized image and the need of an extra temp buffer
  * 
@@ -373,8 +373,8 @@ __device__ void downsampleConvolve_fast(Image3 *dest, Image3 *source, uint32_t *
 	Pixel3 *srcPx = source->pixels;
 	Pixel3 *dstPx = dest->pixels;
 	*width = downW;
-	*height = downH; //Half the image dimension and save both of them in the original ptrs and inside the dest image
-	if(threadIdx.x == 0){ //Only one thread should 
+	*height = downH; //Half the image dimensions and save both of them in the original ptrs and inside the dest image
+	if(threadIdx.x == 0){
 		dest->width = downW;
 		dest->height = downH;
 	}
@@ -384,7 +384,7 @@ __device__ void downsampleConvolve_fast(Image3 *dest, Image3 *source, uint32_t *
 	uint32_t dim = downW * downH;
 	uint32_t max = dim / blockDim.x;
 	for(uint32_t i = 0; i <= max; i++){
-		uint32_t idx = i * blockDim.x + threadIdx.x; //Copy the image to the temp buffer in shared memory
+		uint32_t idx = i * blockDim.x + threadIdx.x; //Use multiple threads to copy the image to the temp buffer in shared memory
 
 		if(idx < dim){
 			uint32_t x = idx % downW, y = idx / downW;
@@ -437,7 +437,7 @@ __device__ void downsampleConvolve_fast(Image3 *dest, Image3 *source, uint32_t *
  */
 __device__ void downsampleConvolve_cuda(Image3 *dest, Image3 *source, uint32_t *width, uint32_t *height, Kernel filter){
 	downsampleConvolve_shared(dest->pixels, source->pixels, width, height, filter);
-	if(threadIdx.x == 0){ //Only one thread should 
+	if(threadIdx.x == 0){ 
 		dest->width = *width;
 		dest->height = *height;
 	}
@@ -446,7 +446,7 @@ __device__ void downsampleConvolve_cuda(Image3 *dest, Image3 *source, uint32_t *
 /**
  * @brief Computes the last two layers of a gaussian pyramid into the two pixel buffer in input
  * This is a special implementation to save memory, so both buffers can be saved on the shared memory and improve access time
- * We need less memory, because we don't save the intermediate layers of the gaussian pyramid, we store only the two layers we're gonna need to compute the output pixel of the laplacian pyramid
+ * We need less memory, because we don't save the intermediate layers of the gaussian pyramid, we store only the two layers we need to compute the output pixel of the laplacian pyramid
  * To do that we use both buffers alternating them as both source and dest, swapping them at each layer iteration
  * 
  * This is a major optimization over the "normal" algorithm described by the llf paper 
@@ -454,10 +454,10 @@ __device__ void downsampleConvolve_cuda(Image3 *dest, Image3 *source, uint32_t *
  * 
  * @param smallDest pointer to the variable holding the pixel buffer that, at the end of the algorithm, will contain the smallest layer of the gaussian pyramid (gauss[nLevels]). At each iteration of the function the buffer held by the variable will be swapped with the one pointed by sourceBigDest
  * @param sourceBigDest pointer to the variable holding the pixel buffer that at the start of the algorithm contains the source image and at the end of the algorithm will contain the second-last smallest layer of the gaussian pyramid (gauss[nLevels - 1]). At each iteration of the function the buffer held by the variable will be swapped with the one pointed by smallDest 
- * @param width pointer to the variable that, at the end of the algorithm, will contain the width of the second-last smaller image (gauss[nLevels - 1])
- * @param height pointer to the variable that, at the end of the algorithm, will contain the height of the second-last smaller image (gauss[nLevels - 1])
- * @param smallW pointer to the variable that at the start of the algorithm contains the width of the source image and at the end will contain the width of the smaller image (gauss[nLevels])
- * @param smallH pointer to the variable that at the start of the algorithm contains the height of the source image and at the end will contain the height of the smaller image (gauss[nLevels])
+ * @param width pointer to the variable that, at the end of the algorithm, will contain the width of the second-last smaller image (gauss[nLevels - 1].width)
+ * @param height pointer to the variable that, at the end of the algorithm, will contain the height of the second-last smaller image (gauss[nLevels - 1].height)
+ * @param smallW pointer to the variable that at the start of the algorithm contains the width of the source image and at the end will contain the width of the smaller image (gauss[nLevels].width)
+ * @param smallH pointer to the variable that at the start of the algorithm contains the height of the source image and at the end will contain the height of the smaller image (gauss[nLevels].height)
  * @param nLevels number of layers of the pyramid
  * @param d_filter blur kernel
  */
@@ -546,7 +546,7 @@ __global__ void gaussianPyramid_cuda(Pyramid d_outPyr, Image3 *d_inImg, uint8_t 
  * @brief internal function of the llf algorithm that runs on the device and renders on the gpu a whole layer of the input gaussian pyramid. 
  * Each block will render a batch of pixel, and the rendering of each single pixel is handled by multiple threads
  * 
- * @param outputLaplacian Destination laplacian pyramid that this rendering will fill and is going to be collapse
+ * @param outputLaplacian Destination laplacian pyramid that this rendering will fill and is going to be collapsed
  * @param gaussPyramid Source gaussian pyramid
  * @param img Source image
  * @param width Width of the source image
@@ -632,9 +632,9 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
  * - Create a gaussian pyramid starting from the source image
  * - For each pixel, for each layer of the gauss pyramid:
  * -- take the current pixel G0 from the original gaussian pyramid
- * -- cut a subregion R0 from the source image with a dimension proportional to the layer's dimension near the pixel
+ * -- cut a subregion R0 around G0 from the source image with a dimension proportional to the layer's dimension near the pixel
  * -- apply a remap function to R0 using G0 as reference
- * -- create a gaussian pyramid over this subregion
+ * -- compute only the last two layers of a gaussian pyramid over R0
  * -- get the pixel GAUSSPX at the correct coordinates respect to the original pixel from the second-last layer of the gaussian pyramid we've just computed
  * -- instead of creating a whole laplacian pyramid, render only the pixel placed at the same coordinates of GAUSSPX, using GAUSSPX and the last layer of the gaussian pyramid we've just computed
  * -- copy the pixel we've just rendered to the current layer of the output laplacian pyramid
@@ -642,7 +642,7 @@ __global__ void __d_llf_internal(Pyramid outputLaplacian, Pyramid gaussPyramid, 
  * - collapse the output laplacian pyramid over the destination image
  * - clamp the destination image
  * 
- * @param h_img source AND destination image. The content of these image are going to be overwritten after the algorithm completes!
+ * @param h_img source AND destination image. The content of this image is going to be overwritten after the algorithm completes!
  * @param h_sigma Treshold used by remap function to identify edges and details
  * @param h_alpha Controls the details level
  * @param h_beta Controls the tone mapping level
@@ -669,7 +669,7 @@ __host__ void llf(Image3 *h_img, float h_sigma, float h_alpha, float h_beta, uin
 
 	startTimerCounter(timeData);
 	for(uint8_t h_lev = 0; h_lev < h_nLevels; h_lev++){ //For each layer of the gaussian pyramid
-		uint32_t h_subregionDimension = 3 * ((1 << (h_lev + 2)) - 1) / 2; //Get the subregion dimension of that thread
+		uint32_t h_subregionDimension = 3 * ((1 << (h_lev + 2)) - 1) / 2; //Get the subregion dimension of that layer
 		__d_llf_internal<<<h_elementsNo, h_nThreads>>>(d_outputLaplacian, d_gaussPyramid, d_img, h_width, h_height, h_lev, h_subregionDimension, d_filter, h_sigma, h_alpha, h_beta, h_elementsNo); //Render the level working on the multiple pixels at the same time, and using multiple thread to render each pixel
 		CHECK(cudaDeviceSynchronize());
 	}

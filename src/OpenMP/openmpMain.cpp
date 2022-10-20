@@ -18,7 +18,7 @@ int main(int argc, char const *argv[]){
 	}
 	int nThreads = atoi(argv[1]);
 
-	Image4 *img4 = getStaticImage4(); //Get the static image bundled with the compiled binary
+	Image4 *img4 = getStaticImage4(); //Gets the static image bundled with the compiled binary
 	Image3 *img = image4to3(img4); //Removes the alpha channel
 	AlphaMap map = getAlphaMap(img4); //Gets the alpha map from the original image
 	destroyImage4(&img4); //Destroys the original image
@@ -29,7 +29,7 @@ int main(int argc, char const *argv[]){
 	llf(img, 0.35, 0.4, 5, 3, nThreads, &workingBuffers); //Applies local laplacian filter
 	destroyWorkingBuffers(&workingBuffers, nLevels, nThreads); //destroy the buffers used by the llf's processing
 
-	img4 = image3to4AlphaMap(img, map); //Readd the alpha channel of the original image
+	img4 = image3to4AlphaMap(img, map); //Read the alpha channel of the original image
 	destroyImage3(&img); //Destroy the image used by the llf algorithm
 	printStaticImage4(img4); //Prints the raw bytes of the rendered image
 	destroyImage4(&img4); //Destroy the rendered image

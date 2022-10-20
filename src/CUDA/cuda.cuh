@@ -23,7 +23,7 @@
  * @brief Struct containing the buffers used in the cuda llf rendering
  */
 typedef struct {
-	Kernel d_filter; //Blur filter
+	Kernel d_filter; //Blur kernel
 	Pyramid d_gaussPyramid; //input gaussian pyramid
 	Pyramid d_outputLaplacian; //output laplacian pyramid to be collapsed
 	Image3 *d_img; //input image3 allocated in the device memory

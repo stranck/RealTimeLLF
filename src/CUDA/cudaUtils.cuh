@@ -15,7 +15,7 @@
 	#include <cuda.h>
 	#include <cuda_runtime.h>
 #else
-    //Shitty hack to remove the errors from vscode even if it doesn't detect my CUDA installation
+    //Shitty hack to remove the errors from vscode when it doesn't detect my CUDA installation
     const Vec3i32 zero3i32 = zero3vect;
 
     #define __global__
@@ -52,7 +52,7 @@
 
 /**
  * @brief obtains a pixel3 from the gpu
- * Unlike getPixel3 this function works directly on the pixel buffer, so you can cache accesses to global memory by not loading it from the image object each time
+ * Unlike getPixel3 this function works directly on the pixel buffer, so you can cache accesses to global memory by not loading it from the image metadata each time
  * 
  * @param _pxs source array of pixels of the image
  * @param _width width of the source image
@@ -64,7 +64,7 @@
 }
 /**
  * @brief sets a pixel3 on the gpu
- * Unlike setPixel3 this function works directly on the pixel buffer, so you can cache accesses to global memory by not loading it from the image object each time
+ * Unlike setPixel3 this function works directly on the pixel buffer, so you can cache accesses to global memory by not loading it from the image metadata each time
  * 
  * @param _pxs source array of pixels of the image
  * @param _width width of the source image

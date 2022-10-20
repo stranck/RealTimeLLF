@@ -6,7 +6,7 @@
  * This is a major optimization over the "normal" algorithm:
  * By the paper we have to build the full laplacian pyramid, just to get one pixel from the second lowest layer.
  * Since all layers of a laplacian pyramid are independent from each other, we can just upsample the latest layer of the source gauss pyramid,
- * take the correct pixel and subtract it from the correct pixel of the 2nd latest layer of the gauss pyramid.
+ * take the correct pixel and subtract it from the correct one of the 2nd latest layer of the gauss pyramid.
  * And not only that! Since the pixel we're taking from the upsampled image depends only by the sorrounding pixels (because we're applying a blur kernel),
  * we can just upsample and convolve the small area of the latest gauss pyramid layer that influences the pixel we're using in the subtraction 
  * 
@@ -50,11 +50,11 @@ Pixel3 upsampleConvolveSubtractSinglePixel(Image3 *source, Pixel3 *gaussPx, Kern
 	return ups;
 }
 /**
- * @brief Upsamples an image using multiple threads by duplicating it in size and the applying a blur kernel to remove the squares at the same time
+ * @brief Upsamples an image using multiple threads by duplicating it in size and applying a blur kernel to remove the squares at the same time
  * 
  * This will save an extra copy of the whole upsized image and the need of an extra temp buffer
  * 
- * Unlike upsampleConvolve this function is multithread; each thread gets a batch of pixel to work with, without any dependence from the other threads 
+ * Unlike upsampleConvolve this function is multithread; each thread gets a batch of pixels to work with, without any dependence from the other threads 
  * 
  * @param dest Destination image
  * @param source Source image 
@@ -144,11 +144,11 @@ void collapse(Image3 *dest, Pyramid laplacianPyr, uint8_t nLevels, Kernel filter
 }
 
 /**
- * @brief Downsamples an image using multiple threads by halfing it in size and the applying a blur kernel to remove the gaps at the same time
+ * @brief Downsamples an image using multiple threads by halfing it in size and applying a blur kernel to remove the gaps at the same time
  * 
  * This will save an extra copy of the whole downsized image and the need of an extra temp buffer
  * 
- * Unlike downsampleConvolve this function is multithread; each thread gets a batch of pixel to work with, without any dependence from the other threads
+ * Unlike downsampleConvolve this function is multithread; each thread gets a batch of pixels to work with, without any dependence from the other threads
  * 
  * @param dest destination bigger image
  * @param source source smaller image
@@ -162,7 +162,7 @@ void downsampleConvolve_parallel(Image3 *dest, Image3 *source, uint32_t *width, 
 	*width /= 2;
 	*height /= 2;
 	dest->width = *width;
-	dest->height = *height; //Half the image dimension and save both of them in the original ptrs and inside the dest image
+	dest->height = *height; //Halfs the image dimensions and save both of them in the original ptrs and inside the dest image
 	const int32_t startingX = originalW & 1;
 	const int32_t startingY = originalH & 1; //If the dimension is odd, we copy only the "middle" pixels. Eg the X: -X-X-
 	const int8_t  rows = KERNEL_DIMENSION;
@@ -230,7 +230,7 @@ void gaussianPyramid_fast(Pyramid outPyr, uint8_t nLevels, Kernel filter){
  * gauss[0] = sourceImg
  * gauss[n] = downsample(gauss[n - 1])
  * 
- * As already said, this function is multithread. It uses downsampleConvolve_parallel and imgcpy3_parallel instead of the normal verions
+ * As already said, this function is multithread. It uses downsampleConvolve_parallel and imgcpy3_parallel instead of the normal versions
  * 
  * @param outPyr output gaussian pyramid
  * @param inImg source image
@@ -240,7 +240,7 @@ void gaussianPyramid_fast(Pyramid outPyr, uint8_t nLevels, Kernel filter){
 void gaussianPyramid_parallel(Pyramid outPyr, Image3 *inImg, uint8_t nLevels, Kernel filter, const uint8_t nThreads){
 	imgcpy3_parallel(outPyr[0], inImg, nThreads); //parallel copy the first layer
 	uint32_t width = inImg->width, height = inImg->height;
-	//if(0 <= nLevels){ //So it don't need to copy two times the whole img
+	//if(0 <= nLevels){ //So it doesn't need to copy two times the whole img
 		downsampleConvolve_parallel(outPyr[1], inImg, &width, &height, filter, nThreads);
 	//}
 	for(uint8_t i = 1; i < nLevels; i++)
@@ -259,7 +259,7 @@ void gaussianPyramid_parallel(Pyramid outPyr, Image3 *inImg, uint8_t nLevels, Ke
  * - Create a gaussian pyramid starting from the source image
  * - For each pixel, for each layer of the gauss pyramid:
  * -- take the current pixel G0 from the original gaussian pyramid
- * -- cut a subregion R0 from the source image with a dimension proportional to the layer's dimension near the pixel
+ * -- cut a subregion R0 around G0 from the source image with a dimension proportional to the layer's dimension near the pixel
  * -- apply a remap function to R0 using G0 as reference
  * -- create a gaussian pyramid over this subregion
  * -- get the pixel GAUSSPX at the correct coordinates respect to the original pixel from the second-last layer of the gaussian pyramid we've just computed
@@ -269,7 +269,7 @@ void gaussianPyramid_parallel(Pyramid outPyr, Image3 *inImg, uint8_t nLevels, Ke
  * - collapse the output laplacian pyramid over the destination image
  * - clamp the destination image
  * 
- * @param img source AND destination image. The content of these image are going to be overwritten after the algorithm completes!
+ * @param img source AND destination image. The content of this image is going to be overwritten after the algorithm completes!
  * @param sigma Treshold used by remap function to identify edges and details
  * @param alpha Controls the details level
  * @param beta Controls the tone mapping level
@@ -374,7 +374,7 @@ void llf(Image3 *img, float sigma, float alpha, float beta, uint8_t nLevels, con
  * Each thread will need it's own set of buffer gaussian pyramid to render each single pixel
  * We don't need a laplacian pyramid for each thread since we're using upsampleConvolveSubtractSinglePixel instead of building an actual pyramid
  * 
- * @param workingBuffers non-allocated data structures
+ * @param workingBuffers non-initialized data structures
  * @param width width of the pyramids
  * @param height height of the pyramids
  * @param nLevels number of layers of the pyramids
