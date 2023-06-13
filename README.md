@@ -71,7 +71,7 @@ Open for the third and last time the `x64 Native Tools Command Prompt for VS` (r
 
 You can test the project in two different ways: by rendering a static image and by rendering a continous video stream in real time using NDI®
 
-The best way on windows to run NDI® is by installing the [NDI® tools](https://www.ndi.tv/tools/#download-tools), and using test patterns or screen capture as source, and studio monitor to see the output of the project. On linux the easiest way is to install [OBS](https://obsproject.com/download#linux) and the [NDI® obs plugin](https://github.com/Palakis/obs-ndi/releases/tag/4.9.1) (don't worry that it's some NDI® versions behind, it's fine), and using the `tools -> ndi output settings` as source and `NDI source` to see the output of the project
+The best way on windows to run NDI® is by installing the [NDI® tools](https://www.ndi.tv/tools/#download-tools), and using test patterns or screen capture as source, and studio monitor to see the output of the project. On linux the easiest way is to install [OBS](https://obsproject.com/download#linux) and the [NDI® obs plugin](https://github.com/obs-ndi/obs-ndi/releases) (don't worry that it's some NDI® versions behind, it's fine), and using the `tools -> ndi output settings` as source and `NDI source` to see the output of the project
 
 ## Static image
 
