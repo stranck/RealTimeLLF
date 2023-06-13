@@ -59,7 +59,7 @@ inline uint8_t roundfu8(float f){
 #endif
 
 typedef uint64_t TimeCounter;
-#ifdef SHOW_TIME_STATS
+#if defined(SHOW_TIME_STATS) || defined(SHOW_TIME_STATS_NDI)
 	//Switch time implementation based on the current platform
 	#ifdef ON_WINDOWS
 		#include <sys/timeb.h> 

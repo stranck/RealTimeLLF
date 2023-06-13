@@ -20,6 +20,12 @@ Pixel4u8 *hostMT2PTbuffer; //mainThread -> processingThread buffer
 Pixel4u8 *hostPT2MTbuffer; //processingThread -> mainThread buffer
 Image3 *workingImage; //preallocated image that will be processed by the selected renderer
 
+#ifdef SHOW_TIME_STATS_NDI
+	TimeData timeData;
+	TimeCounter passed = 0;
+	uint32_t framesCount = 0;
+#endif
+
 //llf parameters
 uint8_t _nLevels;
 float _sigma, _alpha, _beta;
@@ -204,6 +210,7 @@ void processingThread(){
 		}
 		ioBufferSemaphore.release(); //Release the semaphore to access the mainThread<->processingThread buffers
 	
+		startTimerCounter(timeData);
 		//Run the llf rendering function
 		#if CUDA_VERSION
 			llf(workingImage, _sigma, _alpha, _beta, _nLevels, _nThreads, _nBlocks, workingBuffers);
@@ -211,6 +218,16 @@ void processingThread(){
 			llf(workingImage, _sigma, _alpha, _beta, _nLevels, _nThreads, workingBuffers);
 		#else
 			llf(workingImage, _sigma, _alpha, _beta, _nLevels, workingBuffers);
+		#endif
+		stopTimerCounter(timeData, passed);
+
+		#ifdef SHOW_TIME_STATS_NDI
+			if(++framesCount >= PRINT_STAT_EVERY_N_FRAMES){
+				framesCount = 0;
+				float time = ((float) ((uint32_t) passed)) / ((float) PRINT_STAT_EVERY_N_FRAMES);
+				passed = 0;
+				printff("Avarage rendering time of the last %d frames: %.3fms\n", PRINT_STAT_EVERY_N_FRAMES, time);
+			}
 		#endif
 
 		ioBufferSemaphore.acquire(); //Acquire the semaphore to access the mainThread<->processingThread buffers
